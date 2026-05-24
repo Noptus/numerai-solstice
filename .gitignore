@@ -1,0 +1,10 @@
+.env
+data/
+models/
+submissions/
+*.pkl
+*.parquet
+__pycache__/
+.venv/
+*.log
+.DS_Store
