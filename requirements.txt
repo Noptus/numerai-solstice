@@ -1,6 +1,8 @@
 numerapi>=2.23
 lightgbm>=4.0
-xgboost>=2.0
+catboost>=1.2
+torch>=2.0
+rtdl-revisiting-models>=0.0.2
 pandas>=2.0
 numpy>=1.24
 scipy>=1.10

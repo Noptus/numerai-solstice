@@ -3,8 +3,10 @@ data/
 models/
 submissions/
 *.pkl
+*.pt
 *.parquet
 __pycache__/
 .venv/
 *.log
 .DS_Store
+*.egg-info/
