@@ -1,0 +1,6 @@
+{
+  "evaluation_status": "reused_exploratory",
+  "opened_at_utc": "2026-10-22T13:35:31.130351+00:00",
+  "selection_sha256": "fd58ee239f9662a06fcd0e36cadb048a8c8e4152c51c7776d9cc3766bb65f123",
+  "warning": "historical holdout now consumed; future changes need fresh evidence"
+}

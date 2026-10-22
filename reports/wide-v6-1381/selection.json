@@ -1,0 +1,21 @@
+{
+  "calibration_trials": 65,
+  "fingerprint": "f6240222064cbbc3041c09554a706ecf726e529c8ae3579813eb2854949fbf1b",
+  "frozen_at_utc": "2026-10-22T13:35:31.120330+00:00",
+  "neutralization": 0.5,
+  "objective": "mean date NCORR minus 0.25 times standard deviation",
+  "selection_sha256": "fd58ee239f9662a06fcd0e36cadb048a8c8e4152c51c7776d9cc3766bb65f123",
+  "shortlist": [
+    "full-slow",
+    "full-balanced",
+    "full-factor-target",
+    "balanced-medium",
+    "slow-medium"
+  ],
+  "trial_log_sha256": "fec116e8eb15051e91c2d243923667e2808a6fdf7a4e212cc802f42efd576055",
+  "weights": {
+    "full-factor-target": 0.18181818181818182,
+    "full-slow": 0.6363636363636364,
+    "slow-medium": 0.18181818181818182
+  }
+}

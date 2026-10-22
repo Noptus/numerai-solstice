@@ -44,6 +44,16 @@ def verify(root):
                 measured = summary(group[metric], block_size=block)
                 for key in ("mean", "std", "mean_ci95", "positive_fraction", "worst_date", "max_drawdown"):
                     np.testing.assert_allclose(measured[key], expected[name][metric][key], atol=1e-12)
+    for fit in json.loads((root / "model_fits.json").read_text()):
+        if fit["fingerprint"] != plan["fingerprint"]:
+            raise ValueError("fit provenance differs from run plan")
+        gap = pd.offsets.BDay(plan["experiment"]["purge_business_days"])
+        if pd.Timestamp(fit["last_date"]) + gap >= pd.Timestamp(fit["evaluation_first_date"]):
+            raise ValueError("fit metadata violates the outer purge")
+        if "inner_fit_last_date" in fit and pd.Timestamp(fit["inner_fit_last_date"]) + gap >= pd.Timestamp(
+            fit["inner_stop_first_date"]
+        ):
+            raise ValueError("fit metadata violates the inner purge")
     result = json.loads((root / "result.json").read_text())
     status = plan["experiment"].get("historical_evaluation_status", "reserved")
     if result.get("evaluation_status", "reserved") != status:

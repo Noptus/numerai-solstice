@@ -1,0 +1,14 @@
+{
+  "date": "2019-06-07",
+  "fast": {
+    "benchmark_contribution": -0.004625692632097945,
+    "ncorr": 0.00579497718712791
+  },
+  "max_absolute_difference": 5.740023517261661e-10,
+  "neutralizer_columns": 300,
+  "official_numerai_tools_0_7_2": {
+    "benchmark_contribution": -0.004625692190532996,
+    "ncorr": 0.005794977761130262
+  },
+  "rows": 6092
+}

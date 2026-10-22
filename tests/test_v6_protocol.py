@@ -254,6 +254,8 @@ def test_real_cpu_pipeline_seals_labels_and_resumes(snapshot, tmp_path, monkeypa
     narrative = tmp_path / "report.md"
     write(evidence, narrative)
     assert "paired mean NCORR difference" in narrative.read_text()
+    assert "descriptive interval on reused historical data" in narrative.read_text()
+    assert "Reused historical evaluation" in narrative.read_text()
     (evidence / "cv_scores.csv").write_text("changed")
     with pytest.raises(ValueError, match="evidence changed"):
         verify(evidence)

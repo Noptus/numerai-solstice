@@ -12,7 +12,7 @@ import pandas as pd
 from scripts.verify_report import verify
 
 
-def write(root, output):
+def write(root, output, figure="holdout.svg"):
     root, output = Path(root), Path(output)
     verify(root)
 
@@ -118,13 +118,13 @@ Completed {completed} on **{machine}**, {memory}, using **{c["threads"]} CPU thr
 
 {conclusion(benchmark_gain, "the public benchmark")}
 
-![Historical NCORR paths](holdout.svg)
+![Historical NCORR paths]({figure})
 
 Intervals use {c["bootstrap_block_dates"]}-date circular blocks and 2,000 draws. They approximate serial dependence from overlapping 60-day outcomes; they do not correct for every research decision or establish a live edge. Contribution is measured against the fixed public benchmark, whose contribution to itself is zero, rather than Numerai's changing meta-model.
 
-## Selection fixed before holdout access
+## Selection and evaluation access
 
-CV ranking: mean NCORR minus {c["selection_risk_penalty"]} × between-date standard deviation. The shortlist was **{", ".join(selection["shortlist"])}**. Calibration used {c["calibration_start"]} through {c["calibration_end"]} with **{selection["calibration_trials"]} recorded trials**; the reserved evaluation starts only after a further maturity gap.
+CV ranking: mean NCORR minus {c["selection_risk_penalty"]} × between-date standard deviation. The shortlist was **{", ".join(selection["shortlist"])}**. Calibration used {c["calibration_start"]} through {c["calibration_end"]} with **{selection["calibration_trials"]} recorded trials**; the later evaluation starts only after a further maturity gap.
 
 Selected weights: **{weights}**. Feature-neutralization proportion: **{selection["neutralization"]:.2f}**, against the top 50 contemporaneously exposed medium-set numeric features, chosen without targets.
 
@@ -174,8 +174,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--figure", default="holdout.svg")
     args = parser.parse_args()
-    write(args.root, args.output)
+    write(args.root, args.output, args.figure)
 
 
 if __name__ == "__main__":

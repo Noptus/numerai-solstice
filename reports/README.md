@@ -1,5 +1,7 @@
 # Numerai v6 reference experiment
 
+The later [full-feature follow-up](WIDE_V2.md) reuses this historical period and is labeled exploratory.
+
 Completed 2026-10-22 on **Apple M5**, 32 GiB RAM, using **6 CPU threads**. Public snapshot round **1381**; **9** predeclared candidates and **3** purged walk-forward folds. AI-assisted implementation.
 
 ## Reserved historical evaluation

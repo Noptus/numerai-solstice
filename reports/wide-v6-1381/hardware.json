@@ -1,0 +1,11 @@
+{
+  "cpu": "Apple M5",
+  "logical_cpus": 10,
+  "memory_gib": 32,
+  "training_threads": 6,
+  "accelerator": "CPU only",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "training_source_commit": "c62b821d2c88e933615be150d4a610096a2118b3",
+  "reference_tag": "v0.6.1-research",
+  "note": "Exploratory follow-up on a historical period inspected in the first study."
+}

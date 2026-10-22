@@ -1,0 +1,26 @@
+{
+  "files": {
+    "benchmark_comparison.json": "3a081dcf784d62edeae3376cb1f688d28c688f7147108850544a70fd90439570",
+    "calibration_scores.csv": "1a94a2c8a49d45f101f0bb7d9005eed1cabd7febeb8c9c7f23432395d5a2b279",
+    "calibration_summary.json": "3db3cd8d271663aad1d934f77aa76fa5c20fe687c84ba97055f65b5c87b4a652",
+    "calibration_trials.json": "fec116e8eb15051e91c2d243923667e2808a6fdf7a4e212cc802f42efd576055",
+    "cross_study.json": "d872705417153e1cfca79016c4bd740fb4a6414156d21413acfae2a4b59f9d18",
+    "cv_scores.csv": "879d6f85d347d9f5de22e31b4a241853f8a07d464a269707574aaf72eabc0366",
+    "cv_summary.json": "5ca41b96fc10d4a29b141e52bad6c513f78e08ab108639a542b946728d7a55e2",
+    "execution.json": "af886dced572ff1aca9ebda843752421a6ea59269a92f2f7cd79ad8e4fff796a",
+    "hardware.json": "331936f9a78d603bd66daa5a2c44ed848ca9e1684b084aaea6ced16981b1b4c6",
+    "holdout_access.json": "bd7686fbc86345e0552197b0632cd91818a7e2f115a807c33b260320987af775",
+    "holdout_comparison_scores.csv": "cde3c7253d3f818bbaa78d421b5536776b61a0deb04937b7d7fb2563924630a5",
+    "holdout_scores.csv": "b22b27b1057fbcb1350fa3e425770d9f8cfc08d18a8998096848f101eb19e77a",
+    "holdout_summary.json": "6bef876b2a58f9947d9395547f27c3d34c18e034ca0203903247f9ba22a7819c",
+    "inference.json": "1ff87400c3f55d668d7504af752ad96870df83846a76921bdb12cd135fefccec",
+    "live_export.json": "1dfe879d9e76fb1ec0fa5f90478bddf2013682a8d9cd9c4f44dee6f7b64f87fd",
+    "model_fits.json": "97d1bf7b6cb608c1acad58325774929076455cc4e43e3443889206169144f2d7",
+    "plan.json": "912fc8a6932ddecf7678afae37b1282ff00900fcd09c38ee4a9936f0a7d6fbde",
+    "result.json": "bb315babb82d7ea91689f0b0b56d20d130476e4e1433fa4f91a11ae7b4a700c9",
+    "score_parity.json": "65209a35665c6da390fda48b8d5fb7e91f6e584a1f40c4bdf3280bab7534160b",
+    "selection.json": "b535b8db6c6a0c942add903ea7517ab0b878653730d94c9de24edc4361fd9330"
+  },
+  "packaged_at_utc": "2026-10-22T13:50:29.045790+00:00",
+  "scope": "date scores, run provenance and fit metadata; no raw observations or model binaries"
+}

@@ -1,0 +1,57 @@
+{
+  "comparisons": [
+    {
+      "stage": "cv",
+      "window": "fold1",
+      "rows": 332300,
+      "identical_keys_in_order": true,
+      "keys_sha256": "2872d374c8b92b10821ef970789e735df31c47803c233c71eebb6cf05f0248c8"
+    },
+    {
+      "stage": "cv",
+      "window": "fold2",
+      "rows": 370381,
+      "identical_keys_in_order": true,
+      "keys_sha256": "11208ae92a2a80e81d124c9637e61b2166fbafd0381d3683c36552ce721392f7"
+    },
+    {
+      "stage": "cv",
+      "window": "fold3",
+      "rows": 348995,
+      "identical_keys_in_order": true,
+      "keys_sha256": "1169d6d113c874da9a026d326333ab32cb9e469f01cbf6d68f85da116ead0efc"
+    },
+    {
+      "stage": "calibration",
+      "window": "calibration",
+      "rows": 344041,
+      "identical_keys_in_order": true,
+      "keys_sha256": "56ce82cfbc3a5dabd090542b833cea637889f0affe73925f017a5ea1f3572837"
+    },
+    {
+      "stage": "holdout",
+      "window": "holdout",
+      "rows": 411496,
+      "identical_keys_in_order": true,
+      "keys_sha256": "c515370cc15e07a2e3c03ffaa92cfc51df5385b1806e410f5a9421af37b73c3f"
+    }
+  ],
+  "paired_followup_minus_first_ncorr": {
+    "dates": 59,
+    "valid_dates": 59,
+    "eligible": true,
+    "mean": 0.0014811324793253167,
+    "std": 0.014639398717696652,
+    "mean_std": 0.10117440667387988,
+    "positive_fraction": 0.5932203389830508,
+    "worst_date": -0.032143695482741805,
+    "max_drawdown": 0.24899838294317442,
+    "mean_ci95": [
+      -0.008027297152746356,
+      0.009569754601568961
+    ],
+    "bootstrap_block_dates": 16,
+    "uncertainty_note": "circular block bootstrap of historical date scores; not future performance"
+  },
+  "interpretation": "Descriptive comparison on reused historical data; row budget and candidate settings also changed; no independent improvement claim."
+}

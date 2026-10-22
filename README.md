@@ -6,11 +6,17 @@ Reproducible **Numerai v6** research on a local CPU: purged walk-forward validat
 
 AI-assisted implementation. The repository makes its data, tests, search budget and evaluation boundaries inspectable. Historical tournament scores do not establish live investment performance.
 
-## Measured reference
+## Measured research
 
-The first frozen study scored **0.01689 mean NCORR** across 59 historical evaluation dates, versus **0.00410** for its simple baseline and **0.02784** for the public benchmark. The custom blend improved on its control and still lagged the stronger benchmark. [Complete results, uncertainty and all trials](reports/README.md).
+| Study | Mean historical NCORR | Interpretation |
+| --- | ---: | --- |
+| [First frozen study](reports/README.md) | 0.01689 | Above its small-feature control (0.00410); below the supplied public benchmark |
+| [Full-feature follow-up](reports/WIDE_V2.md) | 0.01837 | Exploratory reuse of the same historical period; above its control (0.00120) |
+| Supplied public benchmark | 0.02784 | Higher than both custom selections |
 
-A trusted model bundle produced **7,153 dated predictions in 0.364 seconds** inside the inference function, including integrity checks and file loading. This is a local timing on the reference Mac, not a live investment result. An expanded full-feature follow-up is in progress; the same historical period is now exploratory.
+The follow-up's point-estimate gain over the first study is small and its interval includes zero. These results support a reproducible research case study; they do not establish a live edge. Both reports retain losing candidates, all calibration trials and uncertainty.
+
+A trusted model bundle produced **7,153 dated predictions in 0.391 seconds** inside the inference function, including file/hash checks. This is a local timing on the reference Mac; process startup is excluded. Raw data and model binaries stay outside Git.
 
 ## Run it
 
