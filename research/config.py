@@ -29,6 +29,8 @@ class Experiment:
     version: str = "v6.0"
     primary_target: str = "target_jupiter_60"
     benchmark: str = "lgbm_jupiter_60"
+    historical_evaluation_status: str = "reserved"
+    prior_experiment_fingerprint: str | None = None
     purge_business_days: int = 90
     max_train_rows_per_date: int = 1500
     threads: int = 6
@@ -46,6 +48,13 @@ class Experiment:
     models: tuple[ModelSpec, ...] = ()
 
     def validate(self):
+        if self.historical_evaluation_status not in {"reserved", "reused_exploratory"}:
+            raise ValueError("unknown historical evaluation status")
+        if self.historical_evaluation_status == "reused_exploratory" and not (
+            self.prior_experiment_fingerprint
+            and re.fullmatch(r"[0-9a-f]{64}", self.prior_experiment_fingerprint)
+        ):
+            raise ValueError("exploratory follow-ups must link their prior experiment")
         if self.version != "v6.0":
             raise ValueError("the modern pipeline explicitly supports v6.0")
         horizon = re.search(r"_(\d+)$", self.primary_target)

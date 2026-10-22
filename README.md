@@ -14,20 +14,20 @@ A trusted model bundle produced **7,153 dated predictions in 0.364 seconds** ins
 
 ## Run it
 
-Python 3.12+, macOS or Linux, and [uv](https://docs.astral.sh/uv/getting-started/installation/). The default experiment uses six CPU threads, one model at a time and at most 1,500 training observations per date. The measured reference machine has 32 GiB RAM. Raw data and model artifacts stay outside Git.
+Python 3.12+, macOS or Linux, and [uv](https://docs.astral.sh/uv/getting-started/installation/). The default experiment uses six CPU threads, one model at a time and at most 750 training observations per date. The measured reference machine has 32 GiB RAM. Raw data and model artifacts stay outside Git.
 
 ```bash
 git clone https://github.com/Noptus/numerai-solstice.git
 cd numerai-solstice
 uv sync --frozen --extra dev --no-editable
-uv run --frozen --no-editable solstice plan --config configs/mac.toml
+uv run --frozen --no-editable solstice plan --config configs/wide.toml
 uv run --frozen --no-editable pytest
 
 # Public datasets; no account credentials required. Pins the round on first use.
 uv run --frozen --no-editable solstice download --include-live
 
 # All stages, with integrity-checked checkpoints for resuming the same run.
-uv run --frozen --no-editable solstice run --output runs/mac-v6
+uv run --frozen --no-editable solstice run --output runs/mac-wide-v6
 ```
 
 Download size, model fit times, historical scores and uncertainty are recorded in the [reference experiment](reports/README.md). Budget several hours for a new machine; the CLI logs each fit and stage. Stop and resume the same command without discarding completed fits. Changing code, dependencies, configuration or snapshot requires a fresh run directory.
@@ -65,7 +65,7 @@ The reserved holdout is historical public data, not a claim that nobody has prev
 
 | Path | Purpose |
 | --- | --- |
-| [`configs/mac.toml`](configs/mac.toml) | Finite nine-candidate CPU experiment and fixed date windows |
+| [`configs/wide.toml`](configs/wide.toml) | Seven-candidate full-feature follow-up, with explicit reused-evaluation status |
 | [`research/data.py`](research/data.py) | Pinned downloads, SHA-256 integrity, schema and key validation |
 | [`research/validation.py`](research/validation.py) | Date purging, deterministic sampling and weighting |
 | [`research/models.py`](research/models.py) | Training-only preprocessing, inner stopping and model fits |
@@ -74,7 +74,7 @@ The reserved holdout is historical public data, not a claim that nobody has prev
 | [`tests/`](tests/) | Numerical parity, isolation failures and real synthetic-data CPU integration |
 | [`docs/RESEARCH.md`](docs/RESEARCH.md) | Technique sources, assumptions and next experiments |
 
-The supplied plan loads the medium feature set for exposure postprocessing. Custom plans must retain a medium-feature candidate so those columns remain available.
+The loader retains medium-set columns for exposure postprocessing, even in a small-only or full-feature custom plan. Evaluation stocks remain complete; training keys are preselected before feature batches are materialized.
 
 Individual stages are available as `solstice train --stage cv`, `score --stage cv`, `train --stage calibration`, `score --stage calibration`, `select`, and `finalize`. Use the same `--config`, `--data` and `--output` throughout. Running `finalize` again returns its saved result rather than evaluating the holdout again.
 
@@ -82,7 +82,7 @@ A prediction export refits the frozen selection on eligible history from the pin
 
 ```bash
 uv run --frozen --no-editable python -m scripts.export_live \
-  --run runs/mac-v6 --output runs/mac-v6/live-export
+  --run runs/mac-wide-v6 --output runs/mac-wide-v6/live-export
 ```
 
 After that export, inference can use a separate live-only snapshot with no training labels or refit:
@@ -90,11 +90,13 @@ After that export, inference can use a separate live-only snapshot with no train
 ```bash
 uv run --frozen --no-editable python -m scripts.download_live --data data/next-live
 uv run --frozen --no-editable python -m scripts.predict_bundle \
-  --bundle runs/mac-v6/live-export --data data/next-live \
+  --bundle runs/mac-wide-v6/live-export --data data/next-live \
   --output runs/next-live-predictions.csv
 ```
 
 Use a fresh data directory for each new round; existing snapshots stay pinned. Inference verifies model, source, dependency and live-file hashes and preserves every ticker/date key.
+
+Bundles require the recorded source and dependencies. The first study is preserved by the `v0.6.0-reference` tag; use that environment for its bundle. The current source produces new bundles.
 
 The export writes dated ticker/date predictions and an integrity manifest. It does not upload, stake or trade. A historical snapshot is not a current-round submission. Check current Numerai requirements before independently arranging deployment. Pickled models are local trusted artifacts; do not load checkpoints from untrusted sources.
 

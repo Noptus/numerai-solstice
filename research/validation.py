@@ -32,9 +32,11 @@ def sample_training(frame, rows_per_date, seed):
     # Mix all bits; XOR with the small seed alone barely changes the selected set.
     salt = np.uint64((int(seed) * 0x9E3779B97F4A7C15) % (1 << 64))
     order = np.argsort(hashed ^ salt, kind="stable")
-    ordered = frame.iloc[order]
-    ranks = ordered.groupby("date", sort=False).cumcount().to_numpy()
-    return ordered.iloc[np.flatnonzero(ranks < rows_per_date)].sort_values(["date", "numerai_ticker"])
+    # Rank dates on a narrow Series; never materialize a sorted copy of all features.
+    ordered_dates = pd.Series(frame["date"].to_numpy()[order])
+    ranks = ordered_dates.groupby(ordered_dates, sort=False).cumcount().to_numpy()
+    selected = order[ranks < rows_per_date]
+    return frame.iloc[selected].sort_values(["date", "numerai_ticker"])
 
 
 def training_weights(dates, equal_date=True, half_life_weeks=None):

@@ -92,7 +92,7 @@ class Runner:
                     "created_at_utc": datetime.now(timezone.utc).isoformat(),
                     "platform": platform.platform(),
                     "python": platform.python_version(),
-                    "holdout_status": "reserved historical data; not a prospective test",
+                    "holdout_status": self.experiment.historical_evaluation_status,
                 },
             )
         event("run_ready", fingerprint=self.fingerprint, output=str(self.output))
@@ -399,6 +399,7 @@ class Runner:
                 {
                     "selection_sha256": selection["selection_sha256"],
                     "opened_at_utc": datetime.now(timezone.utc).isoformat(),
+                    "evaluation_status": self.experiment.historical_evaluation_status,
                     "warning": "historical holdout now consumed; future changes need fresh evidence",
                 },
             )
@@ -421,6 +422,8 @@ class Runner:
             "paired_ncorr_gain_vs_baseline": summary(delta, block_size=self.experiment.bootstrap_block_dates),
             "baseline": baseline,
             "historical_holdout_consumed": True,
+            "evaluation_status": self.experiment.historical_evaluation_status,
+            "prior_experiment_fingerprint": self.experiment.prior_experiment_fingerprint,
             "caveats": [
                 "Historical data, not a prospective or live result.",
                 "NCORR and benchmark contribution are scores, not returns or profit.",
@@ -429,6 +432,11 @@ class Runner:
                 "No trading, staking, or submission was performed.",
             ],
         }
+        if self.experiment.historical_evaluation_status == "reused_exploratory":
+            result["caveats"].insert(
+                0,
+                "This historical period was inspected in a prior experiment; this follow-up is exploratory.",
+            )
         atomic_json(path, result)
         event("research_complete", path=str(path))
         return result

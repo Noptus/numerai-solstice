@@ -160,8 +160,16 @@ def test_real_cpu_pipeline_seals_labels_and_resumes(snapshot, tmp_path, monkeypa
         return frame, sets
 
     monkeypatch.setattr(runner_module, "load_training_frame", checked_load)
+    config.write_text(
+        'historical_evaluation_status = "reused_exploratory"\nprior_experiment_fingerprint = "'
+        + "a" * 64
+        + '"\n'
+        + config.read_text()
+    )
     runner = Runner(config, root, output)
     result = runner.run()
+    assert result["evaluation_status"] == "reused_exploratory"
+    assert "prior experiment" in result["caveats"][0]
     assert result["holdout"]["selected_ensemble"]["ncorr"]["eligible"]
     assert result["paired_ncorr_gain_vs_baseline"]["eligible"]
     assert accesses.index("2100-01-01") > accesses.index("2024-12-27")
@@ -293,3 +301,52 @@ def test_holdout_cannot_open_before_selection(snapshot, tmp_path):
         runner.frame("holdout")
     frame, _ = load_training_frame(root, load_experiment(config), max_date="2023-12-31")
     assert frame.date.max() <= pd.Timestamp("2023-12-31")
+
+
+def test_streaming_preserves_each_seed_sample_and_all_evaluation_rows(snapshot):
+    from dataclasses import replace
+
+    root, config_path = snapshot
+    c = load_experiment(config_path)
+    c = replace(c, models=(*c.models, replace(c.models[0], name="other-seed", seed=123)))
+    streamed, _ = load_training_frame(root, c, max_date="2024-12-27")
+    complete = pd.concat([pd.read_parquet(root / name) for name in ("train.parquet", "validation.parquet")])
+    complete = complete.loc[complete.data_type.isin(["train", "validation"])].copy()
+    complete.date = pd.to_datetime(complete.date)
+    complete = complete.loc[complete.date <= "2024-12-27"]
+    for left, right in (*c.folds, (c.calibration_start, c.calibration_end)):
+        a = complete.loc[complete.date.between(left, right)].sort_values(["date", "numerai_ticker"])
+        b = streamed.loc[streamed.date.between(left, right)].sort_values(["date", "numerai_ticker"])
+        assert list(zip(a.numerai_ticker, a.date, strict=True)) == list(
+            zip(b.numerai_ticker, b.date, strict=True)
+        )
+        eligible_a = complete.loc[prior_training_mask(complete.date, left, c.purge_business_days)]
+        eligible_b = streamed.loc[prior_training_mask(streamed.date, left, c.purge_business_days)]
+        for seed in (42, 123):
+            sampled_a = sample_training(eligible_a, c.max_train_rows_per_date, seed)
+            sampled_b = sample_training(eligible_b, c.max_train_rows_per_date, seed)
+            for col in ["numerai_ticker", "date", "f0", "f1", c.primary_target]:
+                np.testing.assert_array_equal(sampled_a[col].to_numpy(), sampled_b[col].to_numpy())
+    assert len(streamed) < len(complete)
+
+
+def test_inplace_ridge_preprocessing_preserves_predictions_and_input():
+    from sklearn.impute import SimpleImputer
+    from sklearn.linear_model import Ridge
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    rng = np.random.default_rng(12)
+    x = rng.normal(size=(1200, 30)).astype(np.float32)
+    x[rng.random(x.shape) < 0.08] = np.nan
+    y = rng.normal(size=1200).astype(np.float32)
+    predictions = []
+    for copy in (True, False):
+        model = make_pipeline(
+            SimpleImputer(strategy="median", keep_empty_features=True, copy=copy),
+            StandardScaler(copy=copy),
+            Ridge(alpha=100),
+        )
+        model.fit(x.copy(), y)
+        predictions.append(model.predict(x.copy()))
+    np.testing.assert_allclose(*predictions, atol=1e-7)

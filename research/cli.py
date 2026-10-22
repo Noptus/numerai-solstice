@@ -16,9 +16,9 @@ def main(argv=None):
     parser.add_argument(
         "command", choices=["plan", "download", "run", "train", "score", "select", "finalize"]
     )
-    parser.add_argument("--config", type=Path, default=Path("configs/mac.toml"))
+    parser.add_argument("--config", type=Path, default=Path("configs/wide.toml"))
     parser.add_argument("--data", type=Path, default=Path("data/v6.0"))
-    parser.add_argument("--output", type=Path, default=Path("runs/mac-v6"))
+    parser.add_argument("--output", type=Path, default=Path("runs/mac-wide-v6"))
     parser.add_argument("--stage", choices=["cv", "calibration", "holdout"], default="cv")
     parser.add_argument("--include-live", action="store_true")
     args = parser.parse_args(argv)

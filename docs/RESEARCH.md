@@ -10,7 +10,7 @@ The [official v6 example](https://github.com/numerai/example-scripts/blob/master
 
 Contribution to a fixed public benchmark is not a historical payout against Numerai's changing meta-model. NCORR is not Spearman correlation; neither score is a trading return. The reported mean/std ratio is not an annualized investment Sharpe, and cumulative-score drawdown is not monetary loss.
 
-## Finite candidate search
+## First finite candidate search (v0.6.0 reference)
 
 | Hypothesis | Candidate | Reason and limitation |
 | --- | --- | --- |
@@ -44,3 +44,13 @@ This run does not exhaust model families, all feature subsets, sample sizes or h
 [TabM's original paper](https://arxiv.org/abs/2410.24210) provides evidence for efficient neural ensembling on broad tabular benchmarks. It does not establish superiority on Numerai v6. A future neural experiment should compare TabM and a small MLP against these trees under the same purged protocol, with a separately recorded training budget and fresh prospective evaluation. Installing a transformer alone would not be evidence of improvement.
 
 Other useful next experiments are full-feature versus medium-feature trees, 20-day versus 60-day auxiliary targets, multiple-seed averaging, longer training samples and prospective weekly tracking of a frozen model. Choose them from CV or future evidence; do not tune them against the consumed historical holdout.
+
+## Full-feature follow-up (v0.6.1)
+
+The first blend beat its small-feature control and lagged the supplied public benchmark. That result motivated [`configs/wide.toml`](../configs/wide.toml): four small/medium controls and three full-feature tree candidates, using all 1,039 numeric columns. A 750-row per-date training cap keeps the wider matrices within local memory. The configuration and every candidate remain fixed before this run's scores are inspected.
+
+The same historical evaluation period was already inspected. Its configuration records `reused_exploratory` and the first experiment's fingerprint, and the result and access journal carry that status. Any follow-up intervals on this period are descriptive. They cannot establish an independently validated improvement. New claims require prospective observations.
+
+The loader reads narrow keys first, retains every evaluation observation and preselects the union of every candidate seed's training sample. It then scans feature batches and gathers only those keys. A regression test compares both seeds' samples and every evaluation observation against full-history loading. Ridge preprocessing uses owned NumPy arrays in place; another test checks prediction equivalence. These changes reduce unnecessary full-matrix copies without changing the sampling rule.
+
+Within this follow-up the candidates share the same row budget and date windows. Comparing it with the first study also changes the row cap and candidate parameters; a cross-study score difference cannot be attributed solely to feature count. The fixed public benchmark's training budget is not replicated or controlled to match ours.

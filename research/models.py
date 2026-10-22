@@ -61,8 +61,8 @@ def fit_model(frame, features, spec, experiment):
     with threadpool_limits(limits=experiment.threads):
         if spec.kind == "ridge":
             estimator = make_pipeline(
-                SimpleImputer(strategy="median", keep_empty_features=True),
-                StandardScaler(),
+                SimpleImputer(strategy="median", keep_empty_features=True, copy=False),
+                StandardScaler(copy=False),
                 Ridge(**spec.params),
             )
             estimator.fit(x, y, ridge__sample_weight=weights)

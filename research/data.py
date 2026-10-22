@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 
 KEYS = ["numerai_ticker", "date"]
@@ -123,40 +124,76 @@ def validate_keys(frame):
         raise ValueError("null or duplicated ticker/date keys")
     if (frame["numerai_ticker"].astype(str).str.len() == 0).any():
         raise ValueError("empty ticker")
-    frame["date"] = pd.to_datetime(frame["date"], errors="raise")
     return frame
 
 
 def load_training_frame(root, experiment, max_date=None):
-    """Numerai's data_type=test rows never enter the research frame."""
+    """Stream only needed feature rows while preserving exact training samples.
+
+    Every evaluation observation is retained. Other dates keep the union of
+    each candidate seed's deterministic per-date sample. Resampling that union
+    for a candidate yields exactly the same keys as sampling the full history.
+    Date/data_type predicates apply before batches reach Python.
+    """
+    from research.validation import sample_training
+
     root = Path(root)
-    sets = feature_sets(root, [m.feature_set for m in experiment.models])
+    sets = feature_sets(root, [m.feature_set for m in experiment.models] + ["medium"])
     features = list(dict.fromkeys(c for cols in sets.values() for c in cols))
     targets = list(dict.fromkeys([experiment.primary_target, *(m.target for m in experiment.models)]))
     columns = [*KEYS, "data_type", *features, *targets]
-    frames = []
+    sources, narrow = [], []
     for name, allowed in (("train.parquet", "train"), ("validation.parquet", "validation")):
-        schema = pq.read_schema(root / name)
-        missing = set(columns) - set(schema.names)
+        missing = set(columns) - set(pq.read_schema(root / name).names)
         if missing:
             raise ValueError(f"{name} is missing required columns: {sorted(missing)}")
         filters = [("data_type", "==", allowed)]
+        predicate = ds.field("data_type") == allowed
         if max_date is not None:
             filters.append(("date", "<=", str(max_date)))
-        frame = pd.read_parquet(root / name, columns=columns, filters=filters)
-        if not (frame["data_type"] == allowed).all():
-            raise ValueError("dataset partition filtering failed")
-        frames.append(frame.dropna(subset=[experiment.primary_target]))
-    frame = pd.concat(frames, ignore_index=True)
-    validate_keys(frame)
-    if frame.empty:
+            predicate = predicate & (ds.field("date") <= str(max_date))
+        keys = pd.read_parquet(root / name, columns=[*KEYS, experiment.primary_target], filters=filters)
+        narrow.append(keys.dropna(subset=[experiment.primary_target]))
+        sources.append((name, predicate))
+    keys = pd.concat(narrow, ignore_index=True)
+    del narrow
+    validate_keys(keys)
+    if keys.empty:
         raise ValueError("no mature primary targets")
+    primary = keys[experiment.primary_target].to_numpy()
+    if not np.isfinite(primary).all() or ((primary < 0) | (primary > 1)).any():
+        raise ValueError("invalid bounded primary target")
+    evaluation = (keys.date >= pd.Timestamp(experiment.holdout_start)).to_numpy(copy=True)
+    windows = [*experiment.folds, (experiment.calibration_start, experiment.calibration_end)]
+    for left, right in windows:
+        evaluation |= keys.date.between(left, right).to_numpy()
+    selected = [keys.loc[evaluation, KEYS]]
+    history = keys.loc[~evaluation, KEYS]
+    for seed in sorted({model.seed for model in experiment.models}):
+        selected.append(sample_training(history, experiment.max_train_rows_per_date, seed)[KEYS])
+    wanted = pd.concat(selected, ignore_index=True).drop_duplicates(KEYS)
+    index = pd.MultiIndex.from_frame(wanted)
+    del keys, history, selected, wanted
+    frames = []
+    for name, predicate in sources:
+        scanner = ds.dataset(root / name, format="parquet").scanner(
+            columns=columns, filter=predicate, batch_size=65_536, use_threads=False
+        )
+        for batch in scanner.to_batches():
+            frame = batch.to_pandas()
+            frame["date"] = pd.to_datetime(frame.date)
+            keep = index.get_indexer(pd.MultiIndex.from_frame(frame[KEYS])) >= 0
+            if keep.any():
+                frames.append(frame.loc[keep].copy())
+    frame = pd.concat(frames, ignore_index=True)
+    if len(frame) != len(index):
+        raise ValueError("streamed feature rows differ from selected ticker/date keys")
+    validate_keys(frame)
     for target in targets:
         values = frame[target].dropna().to_numpy()
         if not np.isfinite(values).all() or ((values < 0) | (values > 1)).any():
             raise ValueError(f"invalid bounded target: {target}")
-    frame = frame.sort_values(["date", "numerai_ticker"]).reset_index(drop=True)
-    return frame, sets
+    return frame.sort_values(["date", "numerai_ticker"]).reset_index(drop=True), sets
 
 
 def load_date_auxiliary(root, name, dates, columns=None):

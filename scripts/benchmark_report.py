@@ -68,9 +68,9 @@ def compare(config, data, run):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, default=Path("configs/mac.toml"))
+    parser.add_argument("--config", type=Path, default=Path("configs/wide.toml"))
     parser.add_argument("--data", type=Path, default=Path("data/v6.0"))
-    parser.add_argument("--run", type=Path, default=Path("runs/mac-v6"))
+    parser.add_argument("--run", type=Path, default=Path("runs/mac-wide-v6"))
     args = parser.parse_args()
     compare(args.config, args.data, args.run)
 

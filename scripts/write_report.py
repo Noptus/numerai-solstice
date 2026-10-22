@@ -21,6 +21,14 @@ def write(root, output):
 
     plan, result, comparison = read("plan.json"), read("result.json"), read("benchmark_comparison.json")
     c, selection = plan["experiment"], result["selection"]
+    exploratory = result.get("evaluation_status") == "reused_exploratory"
+    title = "Numerai v6 exploratory follow-up" if exploratory else "Numerai v6 reference experiment"
+    evaluation_heading = "Reused historical evaluation" if exploratory else "Reserved historical evaluation"
+    reuse_note = (
+        "This evaluation period was already inspected in the first study. Results below are exploratory, and their intervals do not establish independent improvement."
+        if exploratory
+        else ""
+    )
     scores = pd.read_csv(root / "holdout_scores.csv")
     names = ["selected_ensemble", result["baseline"], c["benchmark"]]
     labels = ["Frozen selection", "Simple small-feature baseline", "Public `lgbm_jupiter_60`"]
@@ -37,7 +45,9 @@ def write(root, output):
 
     def conclusion(metric, label):
         low, high = metric["mean_ci95"]
-        if low > 0:
+        if exploratory:
+            statement = "This is a descriptive interval on reused historical data, not an independent improvement test."
+        elif low > 0:
             statement = "The historical paired gain is positive under this approximate interval."
         elif high < 0:
             statement = "The selection underperforms under this approximate interval."
@@ -90,11 +100,13 @@ def write(root, output):
         if live
         else "No dated prediction export is included in this evidence package."
     )
-    output.write_text(f"""# Numerai v6 reference experiment
+    output.write_text(f"""# {title}
 
 Completed {completed} on **{machine}**, {memory}, using **{c["threads"]} CPU threads**. Public snapshot round **{plan["round"]}**; **{len(c["models"])}** predeclared candidates and **{len(c["folds"])}** purged walk-forward folds. AI-assisted implementation.
 
-## Reserved historical evaluation
+## {evaluation_heading}
+
+{reuse_note}
 
 **{scores.date.min()} through {scores.date.max()}**, {scores.date.nunique()} evaluation dates. All eligible stocks are scored on the same dates. Scores are not trading returns.
 

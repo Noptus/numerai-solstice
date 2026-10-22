@@ -111,9 +111,9 @@ def export(config, data, run, output):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, default=Path("configs/mac.toml"))
+    parser.add_argument("--config", type=Path, default=Path("configs/wide.toml"))
     parser.add_argument("--data", type=Path, default=Path("data/v6.0"))
-    parser.add_argument("--run", type=Path, default=Path("runs/mac-v6"))
+    parser.add_argument("--run", type=Path, default=Path("runs/mac-wide-v6"))
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     args.run.mkdir(parents=True, exist_ok=True)

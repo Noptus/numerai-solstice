@@ -45,6 +45,14 @@ def verify(root):
                 for key in ("mean", "std", "mean_ci95", "positive_fraction", "worst_date", "max_drawdown"):
                     np.testing.assert_allclose(measured[key], expected[name][metric][key], atol=1e-12)
     result = json.loads((root / "result.json").read_text())
+    status = plan["experiment"].get("historical_evaluation_status", "reserved")
+    if result.get("evaluation_status", "reserved") != status:
+        raise ValueError("historical evaluation status differs from frozen plan")
+    if (
+        status == "reused_exploratory"
+        and result["prior_experiment_fingerprint"] != plan["experiment"]["prior_experiment_fingerprint"]
+    ):
+        raise ValueError("prior experiment link differs")
     paired = pd.read_csv(root / "holdout_scores.csv").pivot(index="date", columns="model", values="ncorr")
     gain = summary(paired.selected_ensemble - paired[result["baseline"]], block_size=block)
     np.testing.assert_allclose(

@@ -41,9 +41,12 @@ def plot(root, output):
         }
     )
     fig, axes = plt.subplots(2, 1, figsize=(11, 7.2), sharex=True, layout="constrained")
-    fig.suptitle(
-        "Numerai v6 · reserved historical evaluation", fontsize=17, fontweight="bold", x=0.07, ha="left"
+    heading = (
+        "Numerai v6 · exploratory historical follow-up"
+        if plan["experiment"].get("historical_evaluation_status") == "reused_exploratory"
+        else "Numerai v6 · reserved historical evaluation"
     )
+    fig.suptitle(heading, fontsize=17, fontweight="bold", x=0.07, ha="left")
     for name, color, label in zip(names, colors, labels, strict=True):
         ordered = sorted(paths[name])
         dates, scores = zip(*ordered, strict=True)
