@@ -30,7 +30,7 @@ def plot(root, output):
             )
     names = ["selected_ensemble", baseline, benchmark]
     colors = ["#047857", "#6b7280", "#2563eb"]
-    labels = ["Frozen selection", "Simple baseline", "Public benchmark"]
+    labels = ["Frozen selection", "Predeclared control", "Public benchmark"]
     plt.rcParams.update(
         {
             "font.family": "DejaVu Sans",

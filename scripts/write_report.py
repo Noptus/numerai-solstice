@@ -31,7 +31,7 @@ def write(root, output, figure="holdout.svg"):
     )
     scores = pd.read_csv(root / "holdout_scores.csv")
     names = ["selected_ensemble", result["baseline"], c["benchmark"]]
-    labels = ["Frozen selection", "Simple small-feature baseline", "Public `lgbm_jupiter_60`"]
+    labels = ["Frozen selection", f"Control `{result['baseline']}`", "Public `lgbm_jupiter_60`"]
     rows = []
     for name, label in zip(names, labels, strict=True):
         stats = comparison["models"][name]
@@ -114,7 +114,7 @@ Completed {completed} on **{machine}**, {memory}, using **{c["threads"]} CPU thr
 | --- | ---: | --- | ---: |
 {chr(10).join(rows)}
 
-{conclusion(gain, "the simple baseline")}
+{conclusion(gain, "the predeclared control")}
 
 {conclusion(benchmark_gain, "the public benchmark")}
 
@@ -132,7 +132,7 @@ The [selection]({path}/selection.json), [complete calibration trial log]({path}/
 
 ## All walk-forward candidates
 
-These are the complete CV results, including losing candidates. Tree counts were selected using purged inner stopping blocks, then the models were refitted on eligible training observations. The baseline is our small-feature control, not an exact reproduction of Numerai's 200,000-row example.
+These are the complete CV results, including losing candidates. Candidates marked `early_stopping=true` select tree counts using purged inner blocks; `false` uses its predeclared fixed tree budget. Each refit sees only labels mature before its own prediction boundary. The control is the first candidate in the frozen plan, not an exact reproduction of Numerai's example or benchmark.
 
 | Candidate | Mean NCORR | Date-score std | Mean benchmark contribution | CV fit minutes |
 | --- | ---: | ---: | ---: | ---: |
@@ -161,6 +161,7 @@ uv run --frozen --no-editable python -m scripts.verify_report reports/{path}
 uv run --frozen --no-editable python -m scripts.download_reference \\
   reports/{path} --data data/reference-v6-{plan["round"]}
 uv run --frozen --no-editable solstice run \\
+  --config configs/{"rolling" if "rolling" in c["name"] else "wide" if "wide" in c["name"] else "mac"}.toml \\
   --data data/reference-v6-{plan["round"]} --output runs/reproduction
 ```
 

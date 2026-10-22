@@ -390,3 +390,61 @@ def test_fixed_tree_budget_does_not_use_stopping_labels():
     assert fitted.metadata["tree_selection"] == "predeclared_fixed"
     assert fitted.metadata["selected_trees"] == 7
     assert "inner_stop_first_date" not in fitted.metadata
+
+
+def test_prospective_journal_rejects_replacement_and_waits_for_complete_labels(
+    snapshot, tmp_path, monkeypatch
+):
+    from datetime import datetime, timezone
+
+    from scripts import prospective
+    from scripts.export_live import export
+
+    root, config = snapshot
+    output = tmp_path / "research"
+    Runner(config, root, output).run()
+    bundle = output / "live"
+    export(config, root, output, bundle)
+    journal = tmp_path / "prospective"
+    monkeypatch.setattr(prospective, "utc_now", lambda: datetime(2026, 10, 19, 12, tzinfo=timezone.utc))
+    plan = prospective.freeze(bundle, journal)
+    assert plan["first_prediction_date"] == "2026-10-20"
+    with pytest.raises(ValueError, match="already exists"):
+        prospective.freeze(bundle, journal)
+    monkeypatch.setattr(prospective, "utc_now", lambda: datetime(2026, 10, 20, 12, tzinfo=timezone.utc))
+    captured = prospective.collect(bundle, root, journal)
+    assert captured["rows"] == 45
+    with pytest.raises(ValueError, match="immutable"):
+        prospective.collect(bundle, root, journal)
+    pending = prospective.evaluate(journal, root)
+    assert pending["mature_dates"] == 0
+    assert pending["pending_dates"] == ["2026-10-20"]
+    original = pd.read_parquet(root / "validation.parquet")
+    future = original.loc[original.date == original.date.max()].copy().assign(date="2026-10-20")
+    pd.concat([original, future]).to_parquet(root / "validation.parquet", index=False)
+    for name in ("neutralizer", "benchmark_models"):
+        path = root / f"validation_{name}.parquet"
+        frame = pd.read_parquet(path)
+        pd.concat([frame, pd.read_parquet(root / f"live_{name}.parquet")]).to_parquet(path, index=False)
+    result = prospective.evaluate(journal, root)
+    assert result["mature_dates"] == 1
+    assert result["status"] == "interim; insufficient dates"
+    assert result["paired_ncorr_gain_vs_public_benchmark"] is None
+    prediction = journal / captured["prediction_file"]
+    before = prediction.read_bytes()
+    # Newly observed labels can affect scores, never the already committed predictions.
+    future["target_jupiter_60"] = 1 - future.target_jupiter_60
+    pd.concat([original, future]).to_parquet(root / "validation.parquet", index=False)
+    assert prospective.evaluate(journal, root)["scores"] != result["scores"]
+    assert prediction.read_bytes() == before
+    # An incomplete scoring universe fails instead of selecting the favorable subset.
+    pd.concat([original, future.iloc[:-1]]).to_parquet(root / "validation.parquet", index=False)
+    with pytest.raises(ValueError, match="universe differs"):
+        prospective.evaluate(journal, root)
+    prediction.write_text("modified")
+    with pytest.raises(ValueError, match="modified"):
+        prospective.evaluate(journal, root)
+    prediction.write_bytes(before)
+    monkeypatch.setattr(prospective, "utc_now", lambda: datetime(2026, 10, 23, 12, tzinfo=timezone.utc))
+    with pytest.raises(ValueError, match="fresh live date"):
+        prospective.collect(bundle, root, journal)
