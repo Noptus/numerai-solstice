@@ -38,7 +38,7 @@ uv run --frozen --no-editable solstice download --include-live
 uv run --frozen --no-editable solstice run --output runs/mac-wide-v6
 ```
 
-Download size, model fit times, historical scores and uncertainty are recorded in the [reference experiment](reports/README.md). Budget several hours for a new machine; the CLI logs each fit and stage. Stop and resume the same command without discarding completed fits. Changing code, dependencies, configuration or snapshot requires a fresh run directory.
+Download size, model fit times, historical scores and uncertainty are recorded in the [reference experiment](reports/README.md). Budget several hours for a new machine; the CLI logs each fit and stage. Stop and resume the same command without discarding completed fits. Changing code, dependencies, configuration or snapshot requires a fresh run directory. Source-aware uv cache keys rebuild the local wheel after packaged research code changes.
 
 ## Research design
 
