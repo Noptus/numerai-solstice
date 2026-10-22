@@ -1,0 +1,73 @@
+name = "mac-v6-rolling-capacity"
+historical_evaluation_status = "reused_exploratory"
+prior_experiment_fingerprint = "f6240222064cbbc3041c09554a706ecf726e529c8ae3579813eb2854949fbf1b"
+threads = 6
+max_train_rows_per_date = 2000
+purge_business_days = 90
+calibration_start = "2024-01-05"
+calibration_end = "2024-12-27"
+holdout_start = "2025-06-06"
+folds = [["2019-06-07", "2020-06-05"], ["2021-06-04", "2022-06-03"], ["2022-08-05", "2023-07-28"]]
+max_ensemble_models = 3
+ensemble_steps = 4
+neutralization_proportions = [0.0, 0.5]
+
+# Matched sample-size control, using the prior full-slow parameters.
+[[models]]
+name = "static-full-control"
+feature_set = "all"
+[models.params]
+n_estimators = 1800
+learning_rate = 0.01
+max_depth = 8
+num_leaves = 127
+colsample_bytree = 0.1
+min_child_samples = 2000
+reg_lambda = 10.0
+
+# Changes only the refit policy relative to the control.
+[[models]]
+name = "quarterly-full"
+feature_set = "all"
+refit_every_dates = 13
+[models.params]
+n_estimators = 1800
+learning_rate = 0.01
+max_depth = 8
+num_leaves = 127
+colsample_bytree = 0.1
+min_child_samples = 2000
+reg_lambda = 10.0
+
+# More feature diversity per tree and row bagging; inner stopping unchanged.
+[[models]]
+name = "quarterly-bagged"
+feature_set = "all"
+refit_every_dates = 13
+[models.params]
+n_estimators = 3000
+learning_rate = 0.01
+max_depth = 7
+num_leaves = 63
+colsample_bytree = 0.3
+min_child_samples = 2000
+reg_lambda = 10.0
+subsample = 0.75
+subsample_freq = 5
+
+# Predeclared fixed budget tests whether noisy inner RMSE stopping underfits.
+[[models]]
+name = "quarterly-fixed-budget"
+feature_set = "all"
+refit_every_dates = 13
+early_stopping = false
+[models.params]
+n_estimators = 2500
+learning_rate = 0.01
+max_depth = 7
+num_leaves = 63
+colsample_bytree = 0.1
+min_child_samples = 2000
+reg_lambda = 10.0
+subsample = 0.75
+subsample_freq = 5

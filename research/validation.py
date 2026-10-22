@@ -12,6 +12,15 @@ def prior_training_mask(dates, evaluation_start, purge_business_days):
     return np.asarray(dates < cutoff)
 
 
+def refit_windows(dates, cadence=0):
+    """Partition evaluation dates without inspecting features, labels or scores."""
+    unique = pd.DatetimeIndex(pd.to_datetime(dates)).unique().sort_values()
+    if not len(unique) or cadence < 0:
+        raise ValueError("provide evaluation dates and a nonnegative cadence")
+    step = cadence or len(unique)
+    return [(unique[i], unique[min(i + step, len(unique)) - 1]) for i in range(0, len(unique), step)]
+
+
 def inner_split(dates, stop_dates, purge_business_days):
     dates = pd.Series(pd.to_datetime(dates))
     unique = dates.drop_duplicates().sort_values()

@@ -35,7 +35,7 @@ The original [era-boosting research](https://forum.numer.ai/t/era-boosted-models
 5. Hash and freeze the selected weights and transform. Write a holdout access journal before loading the reserved 2025 onward labels. Compare the selected ensemble with the simple baseline on identical observations and dates.
 6. Report the paired date-score difference with a circular block-bootstrap interval. The interval does not adjust for all research decisions or prove a live edge. Public historical data can already have informed prior work.
 
-Each evaluation window uses one fixed fit; models are not refreshed inside that window. The dated export refits on eligible history for its own prediction date. The supplied benchmark's training policy and budget are not replicated, so this comparison is not a controlled attribution of algorithm quality.
+In the first two studies each evaluation window uses one fixed fit; models are not refreshed inside that window. The subsequent [rolling study](ROLLING_STUDY.md) tests 13-date refits and larger training samples under the same maturity rule. The dated export refits on eligible history for its own prediction date. The supplied benchmark's training policy and budget are not replicated, so this comparison is not a controlled attribution of algorithm quality.
 
 The source and dependency fingerprint, full experiment plan, snapshot hashes, per-date scores, model hashes and fit metadata are saved. Resume rejects a changed identity. Only complete, finite-date candidates are eligible. There is no automatic upload or financial side effect in the v6 path.
 

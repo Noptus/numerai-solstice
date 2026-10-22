@@ -20,6 +20,8 @@ class ModelSpec:
     equal_date_weight: bool = True
     half_life_weeks: float | None = None
     era_boost_steps: int = 0
+    early_stopping: bool = True
+    refit_every_dates: int = 0
     params: dict = field(default_factory=dict)
 
 
@@ -80,6 +82,10 @@ class Experiment:
             raise ValueError("candidate names must be safe file names")
         if any(m.kind not in {"lightgbm", "ridge"} for m in self.models):
             raise ValueError("unsupported model family")
+        if any(type(m.refit_every_dates) is not int or m.refit_every_dates < 0 for m in self.models):
+            raise ValueError("refit cadence must be a nonnegative integer")
+        if any(type(m.early_stopping) is not bool for m in self.models):
+            raise ValueError("early_stopping must be a boolean")
         if any(m.half_life_weeks is not None and m.half_life_weeks <= 0 for m in self.models):
             raise ValueError("recency half life must be positive")
         if any(not 0 <= float(p) <= 1 for p in self.neutralization_proportions):

@@ -86,26 +86,31 @@ def fit_model(frame, features, spec, experiment):
                 verbosity=-1,
             )
             max_trees = int(params.pop("n_estimators", 1200))
-            fit, stop = inner_split(
-                frame.date, experiment.early_stopping_dates, experiment.purge_business_days
-            )
-            stopper = lgb.LGBMRegressor(**params, n_estimators=max_trees)
-            stopper.fit(
-                x[fit],
-                y[fit],
-                sample_weight=weights[fit],
-                eval_set=[(x[stop], y[stop])],
-                eval_sample_weight=[weights[stop]],
-                callbacks=[lgb.early_stopping(experiment.early_stopping_rounds, verbose=False)],
-            )
-            trees = max(1, int(stopper.best_iteration_ or max_trees))
+            trees = max_trees
+            if spec.early_stopping:
+                fit, stop = inner_split(
+                    frame.date, experiment.early_stopping_dates, experiment.purge_business_days
+                )
+                stopper = lgb.LGBMRegressor(**params, n_estimators=max_trees)
+                stopper.fit(
+                    x[fit],
+                    y[fit],
+                    sample_weight=weights[fit],
+                    eval_set=[(x[stop], y[stop])],
+                    eval_sample_weight=[weights[stop]],
+                    callbacks=[lgb.early_stopping(experiment.early_stopping_rounds, verbose=False)],
+                )
+                trees = max(1, int(stopper.best_iteration_ or max_trees))
+                meta.update(
+                    inner_fit_last_date=str(frame.loc[fit, "date"].max().date()),
+                    inner_stop_first_date=str(frame.loc[stop, "date"].min().date()),
+                )
+                del stopper
             meta.update(
-                inner_fit_last_date=str(frame.loc[fit, "date"].max().date()),
-                inner_stop_first_date=str(frame.loc[stop, "date"].min().date()),
                 selected_trees=trees,
                 max_trees=max_trees,
+                tree_selection="purged_inner_rmse" if spec.early_stopping else "predeclared_fixed",
             )
-            del stopper
             estimator = lgb.LGBMRegressor(**params, n_estimators=trees)
             estimator.fit(x, y, sample_weight=weights)
             if spec.era_boost_steps:

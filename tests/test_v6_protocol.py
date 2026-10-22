@@ -133,6 +133,7 @@ feature_set = "small"
 alpha = 100.0
 [[models]]
 name = "trees"
+refit_every_dates = 13
 [models.params]
 n_estimators = 20
 num_leaves = 5
@@ -181,6 +182,13 @@ def test_real_cpu_pipeline_seals_labels_and_resumes(snapshot, tmp_path, monkeypa
         assert pd.Timestamp(metadata["inner_fit_last_date"]) + pd.offsets.BDay(90) < pd.Timestamp(
             metadata["inner_stop_first_date"]
         )
+    for metadata_path in output.glob("*/*/trees.json"):
+        meta = json.loads(metadata_path.read_text())
+        assert meta["refit_count"] >= 2
+        for refit in meta["refits"]:
+            assert pd.Timestamp(refit["last_date"]) + pd.offsets.BDay(90) < pd.Timestamp(
+                refit["evaluation_first_date"]
+            )
     # Resume returns the saved result without fitting or re-opening labels.
     monkeypatch.setattr(runner, "train", lambda *_: pytest.fail("completed run retrained"))
     assert runner.run() == result
@@ -352,3 +360,33 @@ def test_inplace_ridge_preprocessing_preserves_predictions_and_input():
         model.fit(x.copy(), y)
         predictions.append(model.predict(x.copy()))
     np.testing.assert_allclose(*predictions, atol=1e-7)
+
+
+def test_refit_partitions_depend_only_on_dates():
+    from research.validation import refit_windows
+
+    dates = pd.date_range("2025-01-03", periods=59, freq="W-FRI")
+    chunks = refit_windows(dates.repeat(3), 13)
+    assert len(chunks) == 5
+    covered = sum((int(dates.to_series().between(left, right).sum()) for left, right in chunks))
+    assert covered == len(dates)
+    assert refit_windows(dates[::-1], 13) == chunks
+    assert refit_windows(dates, 0) == [(dates[0], dates[-1])]
+    with pytest.raises(ValueError, match="cadence"):
+        Experiment(models=(ModelSpec("bad", refit_every_dates=-1),)).validate()
+
+
+def test_fixed_tree_budget_does_not_use_stopping_labels():
+    from research.models import fit_model
+
+    dates = pd.date_range("2018-01-05", periods=60, freq="W-FRI").repeat(10)
+    rng = np.random.default_rng(9)
+    frame = pd.DataFrame(
+        {"date": dates, "f": rng.normal(size=len(dates)), "target_jupiter_60": rng.random(len(dates))}
+    )
+    spec = ModelSpec("fixed", early_stopping=False, params={"n_estimators": 7, "min_child_samples": 5})
+    c = Experiment(threads=1, models=(spec,))
+    fitted = fit_model(frame, ["f"], spec, c)
+    assert fitted.metadata["tree_selection"] == "predeclared_fixed"
+    assert fitted.metadata["selected_trees"] == 7
+    assert "inner_stop_first_date" not in fitted.metadata

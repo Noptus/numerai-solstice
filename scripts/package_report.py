@@ -41,7 +41,8 @@ def package(run, output, log=None):
     for path in sorted(run.glob("*/*/*.json")):
         meta = json.loads(path.read_text())
         if "evaluation_rows" in meta:
-            fits.append({"checkpoint": str(path.relative_to(run)), **meta})
+            for i, fit in enumerate(meta.get("refits", [meta])):
+                fits.append({"checkpoint": str(path.relative_to(run)), "refit_index": i + 1, **fit})
     atomic_json(output / "model_fits.json", fits)
     live = run / "live-export/export.json"
     if live.exists():

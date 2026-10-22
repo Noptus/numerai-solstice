@@ -16,6 +16,8 @@ AI-assisted implementation. The repository makes its data, tests, search budget 
 
 The follow-up's point-estimate gain over the first study is small and its interval includes zero. These results support a reproducible research case study; they do not establish a live edge. Both reports retain losing candidates, all calibration trials and uncertainty.
 
+A new [predeclared rolling/capacity study](docs/ROLLING_STUDY.md) is running locally: four candidates, quarterly refits, larger training samples and a fixed-tree-budget ablation. Its reused historical evaluation remains exploratory.
+
 A trusted model bundle produced **7,153 dated predictions in 0.391 seconds** inside the inference function, including file/hash checks. This is a local timing on the reference Mac; process startup is excluded. Raw data and model binaries stay outside Git.
 
 ## Run it

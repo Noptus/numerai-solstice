@@ -29,7 +29,7 @@ from research.data import (
 )
 from research.models import fit_model
 from research.scoring import DateScorer, neutralize_features, percentile, summary
-from research.validation import prior_training_mask, sample_training
+from research.validation import prior_training_mask, refit_windows, sample_training
 
 
 def digest(value):
@@ -164,6 +164,9 @@ class Runner:
             path = base.with_suffix(suffix)
             if not path.is_file() or file_hash(path) != meta["artifacts"][suffix]:
                 raise ValueError(f"model checkpoint is missing or modified: {path}")
+        for checkpoint in meta.get("refit_checkpoints", []):
+            if not self._check_checkpoint(self.output / checkpoint):
+                raise ValueError("missing refit checkpoint")
         return True
 
     def train(self, stage):
@@ -182,9 +185,6 @@ class Runner:
             evaluation = frame.loc[frame.date.between(left, right)]
             if evaluation.empty:
                 raise ValueError(f"no mature observations in {window}")
-            eligible = frame.loc[prior_training_mask(frame.date, left, self.experiment.purge_business_days)]
-            if eligible.empty:
-                raise ValueError("purge leaves no training data")
             for spec in self.experiment.models:
                 if spec.name not in names:
                     continue
@@ -193,33 +193,84 @@ class Runner:
                 if self._check_checkpoint(base):
                     event("checkpoint_reused", stage=stage, window=window, model=spec.name)
                     continue
-                event("fit_start", stage=stage, window=window, model=spec.name)
-                started = time.monotonic()
-                sampled = sample_training(eligible, self.experiment.max_train_rows_per_date, spec.seed)
-                fitted = fit_model(sampled, sets[spec.feature_set], spec, self.experiment)
-                pred = fitted.predict(evaluation)
-                prediction = evaluation[KEYS].copy()
-                prediction["prediction"] = pred
+                chunks = refit_windows(evaluation.date, spec.refit_every_dates)
+                parts, refits, checkpoints = [], [], []
+                for i, (chunk_left, chunk_right) in enumerate(chunks):
+                    chunk = evaluation.loc[evaluation.date.between(chunk_left, chunk_right)]
+                    refit_base = base.parent / base.name / f"refit{i + 1:03d}"
+                    refit_base.parent.mkdir(parents=True, exist_ok=True)
+                    if self._check_checkpoint(refit_base):
+                        refit_meta = json.loads(refit_base.with_suffix(".json").read_text())
+                        parts.append(pd.read_parquet(refit_base.with_suffix(".parquet")))
+                        refits.append(refit_meta)
+                        checkpoints.append(str(refit_base.relative_to(self.output)))
+                        event("refit_reused", stage=stage, window=window, model=spec.name, refit=i + 1)
+                        continue
+                    event("fit_start", stage=stage, window=window, model=spec.name, refit=i + 1)
+                    started = time.monotonic()
+                    available = frame.loc[
+                        prior_training_mask(frame.date, chunk_left, self.experiment.purge_business_days)
+                    ]
+                    sampled = sample_training(available, self.experiment.max_train_rows_per_date, spec.seed)
+                    del available
+                    fitted = fit_model(sampled, sets[spec.feature_set], spec, self.experiment)
+                    prediction = chunk[KEYS].copy()
+                    prediction["prediction"] = fitted.predict(chunk)
+                    part = refit_base.with_suffix(".parquet.tmp")
+                    prediction.to_parquet(part, index=False)
+                    part.replace(refit_base.with_suffix(".parquet"))
+                    part = refit_base.with_suffix(".pkl.tmp")
+                    with part.open("wb") as handle:
+                        pickle.dump(fitted, handle, protocol=5)
+                    part.replace(refit_base.with_suffix(".pkl"))
+                    refit_meta = {
+                        "fingerprint": self.fingerprint,
+                        "spec": asdict(spec),
+                        **fitted.metadata,
+                        "evaluation_first_date": str(chunk.date.min().date()),
+                        "evaluation_last_date": str(chunk.date.max().date()),
+                        "evaluation_rows": len(chunk),
+                        "elapsed_seconds": round(time.monotonic() - started, 3),
+                        "artifacts": {s: file_hash(refit_base.with_suffix(s)) for s in (".parquet", ".pkl")},
+                    }
+                    atomic_json(refit_base.with_suffix(".json"), refit_meta)
+                    event(
+                        "fit_complete",
+                        stage=stage,
+                        window=window,
+                        model=spec.name,
+                        refit=i + 1,
+                        **fitted.metadata,
+                    )
+                    parts.append(prediction)
+                    refits.append(refit_meta)
+                    checkpoints.append(str(refit_base.relative_to(self.output)))
+                    del fitted, sampled
+                prediction = pd.concat(parts, ignore_index=True)
+                validate_keys(prediction)
+                if len(prediction) != len(evaluation):
+                    raise ValueError("refits did not cover the complete evaluation window")
                 part = base.with_suffix(".parquet.tmp")
                 prediction.to_parquet(part, index=False)
                 part.replace(base.with_suffix(".parquet"))
-                part = base.with_suffix(".pkl.tmp")
-                with part.open("wb") as handle:
-                    pickle.dump(fitted, handle, protocol=5)
-                part.replace(base.with_suffix(".pkl"))
+                # The historical bundle caches only the last refit; predictions and
+                # all per-refit checkpoints retain the full walk-forward evidence.
+                import shutil
+
+                shutil.copyfile(refit_base.with_suffix(".pkl"), base.with_suffix(".pkl"))
                 meta = {
-                    "fingerprint": self.fingerprint,
-                    "spec": asdict(spec),
-                    **fitted.metadata,
-                    "evaluation_first_date": str(evaluation.date.min().date()),
+                    **refits[0],
                     "evaluation_last_date": str(evaluation.date.max().date()),
                     "evaluation_rows": len(evaluation),
-                    "elapsed_seconds": round(time.monotonic() - started, 3),
+                    "fit_seconds": sum(item["fit_seconds"] for item in refits),
+                    "refit_count": len(refits),
+                    "refits": refits,
+                    "refit_checkpoints": checkpoints,
+                    "historical_pickle_scope": "last refit only; not a deployment bundle",
                     "artifacts": {s: file_hash(base.with_suffix(s)) for s in (".parquet", ".pkl")},
                 }
                 atomic_json(base.with_suffix(".json"), meta)
-                event("fit_complete", stage=stage, window=window, model=spec.name, **fitted.metadata)
-                del fitted, sampled, pred, prediction
+                del parts, prediction
         return names
 
     def contexts(self, evaluation):
