@@ -13,6 +13,9 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - run: pip install -r requirements-checks.txt
-      - run: python -m unittest discover -s tests -v
-      - run: python -m py_compile solstice.py config.py validation.py
+      - run: python -m pip install uv
+      - run: uv sync --frozen --extra dev --no-editable
+      - run: uv run --frozen --no-editable ruff check research tests/test_v6* scripts/*.py
+      - run: uv run --frozen --no-editable pytest
+      - run: uv run --frozen --no-editable solstice plan --config configs/mac.toml
+      - run: uv run --frozen --no-editable python -m py_compile solstice.py config.py validation.py

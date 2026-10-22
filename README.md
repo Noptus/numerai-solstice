@@ -2,91 +2,85 @@
 
 [![Research checks](https://github.com/Noptus/numerai-solstice/actions/workflows/tests.yml/badge.svg)](https://github.com/Noptus/numerai-solstice/actions/workflows/tests.yml)
 
-**AI-assisted research implementation.** Offline tests cover era isolation, cross-sectional transforms and training orchestration; model training and live performance have not been validated by this cleanup.
+Reproducible **Numerai v6** research on a local CPU: purged walk-forward validation, official neutral correlation, fixed-benchmark contribution, and a recorded model-selection process.
 
-**Compatibility checked October 22, 2026:** this code targets v5.2. Numerai retired public v5.0-v5.3 training/validation downloads on October 16. Training requires previously cached compatible data. A v6 migration needs explicit column, target, feature and benchmark changes plus retraining; changing the version string is insufficient. See [Numerai data documentation](https://docs.numer.ai/numerai-tournament/data).
+AI-assisted implementation. The repository makes its data, tests, search budget and evaluation boundaries inspectable. Historical tournament scores do not establish live investment performance.
 
-A Python research pipeline for the Numerai tournament, combining tree-based models, a transformer, and configurable prediction neutralization.
+## Run it
 
-The public implementation is in [solstice.py](solstice.py), with experiment settings in [config.py](config.py). This repository demonstrates model-pipeline design. It does not establish a top-1% ranking, guaranteed profitability, or an independently validated improvement over the tournament benchmark.
+Python 3.12+, macOS or Linux, and [uv](https://docs.astral.sh/uv/getting-started/installation/). The default experiment uses six CPU threads, one model at a time and at most 1,500 training observations per date. The measured reference machine has 32 GiB RAM. Raw data and model artifacts stay outside Git.
 
-## What is implemented
+```bash
+uv sync --frozen --extra dev --no-editable
+uv run --frozen --no-editable solstice plan --config configs/mac.toml
+uv run --frozen --no-editable pytest
 
-- Benchmark-aware LightGBM with era-focused retraining.
-- A multi-target LightGBM blend and a residual-target model.
-- CatBoost and an FT-Transformer component.
-- Per-component rank normalization and weighted ensembling.
-- Feature and benchmark neutralization, evaluation, checkpointing and optional submission.
+# Public datasets; no account credentials required. Pins the round on first use.
+uv run --frozen --no-editable solstice download --include-live
 
-These are hypotheses to compare, not guarantees of diversification. Training on a residual target does not by itself make predictions orthogonal to the meta-model. Different model families can have correlated errors, and stronger neutralization does not necessarily improve MMC.
+# All stages, with integrity-checked checkpoints for resuming the same run.
+uv run --frozen --no-editable solstice run --output runs/mac-v6
+```
 
-## Start here
+Download size, model fit times, historical scores and uncertainty are recorded in the [reference experiment](reports/README.md). Budget several hours for a new machine; the CLI logs each fit and stage. Stop and resume the same command without discarding completed fits. Changing code, dependencies, configuration or snapshot requires a fresh run directory.
 
-| File | Responsibility |
+## Research design
+
+```mermaid
+flowchart LR
+    A[Pinned public snapshot] --> B[Three purged walk-forward folds]
+    B --> C[Shortlist from CV only]
+    C --> D[2024 calibration: blend and neutralization]
+    D --> E[Freeze selection and trial log]
+    E --> F[Reserved historical holdout]
+    F --> G[Dated prediction export]
+```
+
+| Component | What is compared or enforced |
 | --- | --- |
-| [solstice.py](solstice.py) | Data loading, component training, prediction, calibration and submission |
-| [config.py](config.py) | Features, targets, model parameters and ensemble weights |
-| [requirements.txt](requirements.txt) | Python dependencies |
-| [.env.example](.env.example) | Credential configuration template; use local values, never committed secrets |
+| Baselines | Small-feature LightGBM and medium-feature ridge regression |
+| Tree candidates | Regularization, extra trees, slower learning and recency weighting |
+| Target diversity | Explicit Jupiter, factor-feature-neutral and Camille 60-day targets |
+| Era boosting | Recorded in-sample reweighting ablation; no assumed benefit |
+| Sampling | Deterministic ticker/date hashes, independent of labels |
+| Validation | Earlier dates only; 90 business days purged before every outer and inner evaluation boundary |
+| Early stopping | Separate purged block inside training; outer labels never select tree counts |
+| Ensemble | CV shortlist; nonnegative greedy blend and exposure neutralization tuned on calibration only |
+| Scoring | NCORR and contribution to `lgbm_jupiter_60`, using supplied v6 neutralizers |
+| Evidence | Per-date scores, every calibration trial, SHA-256 data/model hashes and dependency versions |
 
-## Offline research checks
+The purge covers the explicit 60-day targets, the documented lag, and a conservative buffer. It uses weekdays rather than a bespoke exchange calendar. Scores use every eligible stock in each evaluation date; only training is sampled. Numerai's `data_type=test` rows are excluded.
 
-No data downloads or ML framework install are needed for these checks:
+The reserved holdout is historical public data, not a claim that nobody has previously examined it. Opening it consumes it. A better score after changing the design needs fresh prospective evidence. Block-bootstrap intervals use 16-date blocks to reflect overlapping outcomes approximately; they are not a guarantee of independence.
 
-```bash
-python -m pip install -r requirements-checks.txt
-python -m unittest discover -s tests -v
-python -m py_compile solstice.py config.py validation.py
-python solstice.py --help
-```
+## Inspect the implementation
 
-The tests verify chronological order, disjoint roles, embargo gaps and failure on insufficient history. Cross-sectional ranks and neutralization are computed within each era; metrics reject nonfinite inputs and empty/constant evaluation groups and undefined mean/std ratios. A synthetic orchestration test runs the real training control flow with mocked models and checks that early stopping, weight calibration and evaluation receive different era labels; another rejects legacy checkpoints. They do not certify the entire model pipeline or establish profitable performance.
+| Path | Purpose |
+| --- | --- |
+| [`configs/mac.toml`](configs/mac.toml) | Finite nine-candidate CPU experiment and fixed date windows |
+| [`research/data.py`](research/data.py) | Pinned downloads, SHA-256 integrity, schema and key validation |
+| [`research/validation.py`](research/validation.py) | Date purging, deterministic sampling and weighting |
+| [`research/models.py`](research/models.py) | Training-only preprocessing, inner stopping and model fits |
+| [`research/scoring.py`](research/scoring.py) | Official-metric parity, reusable neutralizer factorization and uncertainty |
+| [`research/runner.py`](research/runner.py) | Checkpoints, staged selection and holdout access journal |
+| [`tests/`](tests/) | Numerical parity, isolation failures and real synthetic-data CPU integration |
+| [`docs/RESEARCH.md`](docs/RESEARCH.md) | Technique sources, assumptions and next experiments |
 
-## Local setup with cached v5.2 data
+Individual stages are available as `solstice train --stage cv`, `score --stage cv`, `train --stage calibration`, `score --stage calibration`, `select`, and `finalize`. Use the same `--config`, `--data` and `--output` throughout. Running `finalize` again returns its saved result rather than evaluating the holdout again.
 
-```bash
-git clone https://github.com/Noptus/numerai-solstice.git
-cd numerai-solstice
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-python solstice.py --help
-```
-
-The CLI checks the available dataset catalog before downloading missing files. Unavailable v5.2 files produce an explicit compatibility error before any partial download. Each command requests only the files it needs. Use the offline checks above for a clean-clone review. Full training also requires substantial memory and time. No training or submission was run during the cleanup.
-
-```bash
-# Train without submitting predictions
-python solstice.py --train
-
-# Evaluate an existing checkpoint
-python solstice.py --evaluate
-```
-
-Submission is a separate, externally visible action. Only after reviewing the saved model and configuring your own account:
+A prediction export refits the frozen selection on eligible history from the pinned round:
 
 ```bash
-python solstice.py --submit
+uv run --frozen --no-editable python -m scripts.export_live \
+  --run runs/mac-v6 --output runs/mac-v6/live-export
 ```
 
-## Evaluation boundaries
+The export writes dated ticker/date predictions and an integrity manifest. It does not upload, stake or trade. A historical snapshot is not a current-round submission. Check current Numerai requirements before independently arranging deployment. Pickled models are local trusted artifacts; do not load checkpoints from untrusted sources.
 
-The training path now separates validation eras into early stopping, a four-era gap, 95 calibration eras, a second four-era gap, and the final 95 evaluation eras. The transformer sees only the early-stopping partition; ensemble weights use only calibration eras. Partition labels, data version and target are saved with the checkpoint. Evaluation rejects legacy checkpoints without a split.
+## Compatibility and reuse
 
-Four eras are a configurable gap for the v5 20-day experiment, not a universal leakage guarantee. Check actual era spacing and overlapping labels before extending it. Existing historical validation data was already used by earlier versions: a new split cannot make it untouched again. New claims require a frozen protocol and genuinely unseen future data. The reported neutralization variants are exploratory diagnostics; selecting one after viewing evaluation metrics consumes that evaluation set.
-The displayed correlation is a **Spearman proxy**, not official Numerai CORR or MMC. The `sharpe` field is the mean/std ratio of per-era correlations, not an annualized returns Sharpe. `max_dd` measures drawdown in cumulative correlations, not monetary P&L. Benchmark comparisons use the same proxy.
+The v6 path uses `date` / `numerai_ticker`, explicit `target_jupiter_60`, numeric feature sets and supplied neutralizer matrices. Text `feature_country` is excluded. Restored continuous features may contain missing values: ridge fits its imputer/scaler on training only; trees use native missing-value handling.
 
-For a reproducible result, record the source commit, data version, exact era splits, configuration, model hashes, per-era metrics and dated live round history. Compare against a simple baseline and include uncertainty and costs. The README deliberately does not quote a rank or hardware-performance estimate without a matching artifact.
+The original `solstice.py`, `config.py` and `validation.py` remain as a **legacy v5.2 research implementation**, documented in [the legacy guide](docs/LEGACY_V5.md). Its Spearman diagnostics are not v6 NCORR. Public v5 training downloads were retired; that path needs cached compatible data and its older optional dependencies. Use the `solstice` console command or `python -m research` for v6.
 
-No scheduled training or submission is enabled merely by cloning this repository. No paid compute is required by these documentation changes.
-
-## References
-
-- [Numerai scoring documentation](https://docs.numer.ai/numerai-tournament/scoring)
-- [Numerai feature-neutralization discussion](https://forum.numer.ai/t/an-introduction-to-feature-neutralization-exposure/4955)
-- [FT-Transformer paper](https://arxiv.org/abs/2106.11959)
-
-## Reuse
-
-This checkout does not currently include a standalone license file. Confirm reuse terms before redistribution. Tournament data and third-party dependencies retain their own terms.
+No standalone source license has been granted in this repository. Dataset and dependency licenses remain with their owners.

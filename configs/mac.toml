@@ -1,0 +1,112 @@
+name = "mac-v6-20261022"
+threads = 6
+max_train_rows_per_date = 1500
+purge_business_days = 90
+calibration_start = "2024-01-05"
+calibration_end = "2024-12-27"
+holdout_start = "2025-06-06"
+folds = [["2019-06-07", "2020-06-05"], ["2021-06-04", "2022-06-03"], ["2022-08-05", "2023-07-28"]]
+max_ensemble_models = 5
+ensemble_steps = 12
+neutralization_proportions = [0.0, 0.25, 0.5, 0.75]
+
+[[models]]
+name = "baseline-small"
+feature_set = "small"
+equal_date_weight = false
+[models.params]
+n_estimators = 300
+learning_rate = 0.05
+max_depth = 5
+num_leaves = 31
+colsample_bytree = 0.1
+min_child_samples = 200
+
+[[models]]
+name = "ridge-medium"
+kind = "ridge"
+[models.params]
+alpha = 100.0
+
+[[models]]
+name = "balanced-medium"
+[models.params]
+n_estimators = 1200
+learning_rate = 0.02
+max_depth = 6
+num_leaves = 63
+colsample_bytree = 0.2
+min_child_samples = 1000
+reg_lambda = 10.0
+
+[[models]]
+name = "extra-medium"
+seed = 123
+[models.params]
+n_estimators = 1200
+learning_rate = 0.02
+max_depth = 7
+num_leaves = 63
+colsample_bytree = 0.3
+min_child_samples = 1000
+extra_trees = true
+reg_lambda = 10.0
+
+[[models]]
+name = "slow-medium"
+[models.params]
+n_estimators = 2000
+learning_rate = 0.005
+max_depth = 8
+num_leaves = 127
+colsample_bytree = 0.1
+min_child_samples = 3000
+reg_lambda = 5.0
+
+[[models]]
+name = "recent-medium"
+half_life_weeks = 208.0
+[models.params]
+n_estimators = 1200
+learning_rate = 0.02
+max_depth = 6
+num_leaves = 63
+colsample_bytree = 0.2
+min_child_samples = 1000
+reg_lambda = 10.0
+
+[[models]]
+name = "factor-target"
+target = "target_factor_feat_neutral_60"
+[models.params]
+n_estimators = 1200
+learning_rate = 0.02
+max_depth = 6
+num_leaves = 63
+colsample_bytree = 0.2
+min_child_samples = 1000
+reg_lambda = 10.0
+
+[[models]]
+name = "camille-target"
+target = "target_camille_60"
+[models.params]
+n_estimators = 1200
+learning_rate = 0.02
+max_depth = 6
+num_leaves = 63
+colsample_bytree = 0.2
+min_child_samples = 1000
+reg_lambda = 10.0
+
+[[models]]
+name = "era-boost-ablation"
+era_boost_steps = 2
+[models.params]
+n_estimators = 800
+learning_rate = 0.01
+max_depth = 6
+num_leaves = 63
+colsample_bytree = 0.2
+min_child_samples = 1000
+reg_lambda = 10.0
