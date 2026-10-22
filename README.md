@@ -1,5 +1,11 @@
 # Numerai Solstice
 
+[![Research checks](https://github.com/Noptus/numerai-solstice/actions/workflows/tests.yml/badge.svg)](https://github.com/Noptus/numerai-solstice/actions/workflows/tests.yml)
+
+**AI-assisted research implementation.** Offline tests verify the era partitioner; model training and live performance have not been validated by this cleanup.
+
+**Compatibility checked October 22, 2026:** this code targets v5.2. Numerai retired public v5.0-v5.3 training/validation downloads on October 16. Training requires previously cached compatible data. A v6 migration needs explicit column, target, feature and benchmark changes plus retraining; changing the version string is insufficient. See [Numerai data documentation](https://docs.numer.ai/numerai-tournament/data).
+
 A Python research pipeline for the Numerai tournament, combining tree-based models, a transformer, and configurable prediction neutralization.
 
 The public implementation is in [solstice.py](solstice.py), with experiment settings in [config.py](config.py). This repository demonstrates model-pipeline design. It does not establish a top-1% ranking, guaranteed profitability, or an independently validated improvement over the tournament benchmark.
@@ -23,7 +29,19 @@ These are hypotheses to compare, not guarantees of diversification. Training on 
 | [requirements.txt](requirements.txt) | Python dependencies |
 | [.env.example](.env.example) | Credential configuration template; use local values, never committed secrets |
 
-## Local setup
+## Offline research checks
+
+No data downloads or ML framework install are needed for these checks:
+
+```bash
+python -m pip install -r requirements-checks.txt
+python -m unittest discover -s tests -v
+python -m py_compile solstice.py config.py validation.py
+```
+
+The tests verify chronological order, disjoint roles, embargo gaps and failure on insufficient history. A synthetic orchestration test runs the real training control flow with mocked models and checks that early stopping, weight calibration and evaluation receive different era labels; another rejects legacy checkpoints. They do not certify the entire model pipeline or establish profitable performance.
+
+## Local setup with cached v5.2 data
 
 ```bash
 git clone https://github.com/Noptus/numerai-solstice.git
@@ -35,7 +53,7 @@ cp .env.example .env
 python solstice.py --help
 ```
 
-Training and evaluation download tournament data and can require substantial memory and time. Review the data version, target configuration and machine requirements first.
+The legacy training CLI attempts to download missing v5.2 files and can fail because those public downloads were retired. Use the offline checks above for a clean-clone review. Full training also requires substantial memory and time. No training or submission was run during the cleanup.
 
 ```bash
 # Train without submitting predictions
@@ -53,8 +71,9 @@ python solstice.py --submit
 
 ## Evaluation boundaries
 
-The current training path calibrates ensemble weights on the last 95 validation eras and then reports evaluation on those same eras. Those figures are tuning diagnostics, not an untouched holdout estimate. A credible comparison needs a separate chronological holdout that remains sealed through feature, model and weight selection.
+The training path now separates validation eras into early stopping, a four-era gap, 95 calibration eras, a second four-era gap, and the final 95 evaluation eras. The transformer sees only the early-stopping partition; ensemble weights use only calibration eras. Partition labels, data version and target are saved with the checkpoint. Evaluation rejects legacy checkpoints without a split.
 
+Four eras are a configurable gap for the v5 20-day experiment, not a universal leakage guarantee. Check actual era spacing and overlapping labels before extending it. Existing historical validation data was already used by earlier versions: a new split cannot make it untouched again. New claims require a frozen protocol and genuinely unseen future data. The reported neutralization variants are exploratory diagnostics; selecting one after viewing evaluation metrics consumes that evaluation set.
 For a reproducible result, record the source commit, data version, exact era splits, configuration, model hashes, per-era metrics and dated live round history. Compare against a simple baseline and include uncertainty and costs. The README deliberately does not quote a rank or hardware-performance estimate without a matching artifact.
 
 No scheduled training or submission is enabled merely by cloning this repository. No paid compute is required by these documentation changes.

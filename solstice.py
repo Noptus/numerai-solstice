@@ -1,72 +1,10 @@
 #!/usr/bin/env python3
-"""
-SOLSTICE v4 — Numerai Tournament Pipeline
-==========================================
-Open-source 5-component ensemble pipeline targeting top 1% MMC performance.
+"""AI-assisted Numerai v5.2 research pipeline.
 
-ARCHITECTURE:
-  ┌─────────────────────────────────────────────────────────────────┐
-  │  DATA LAYER                                                     │
-  │  • v5.2 train + validation + live + benchmark_models            │
-  │  • Medium features (780) + benchmarks (~8) = ~788 columns       │
-  │  • Float32 everywhere, column-pruned parquet reads              │
-  └─────────────────────────────────────────────────────────────────┘
-                               ▼
-  ┌─────────────────────────────────────────────────────────────────┐
-  │  COMPONENT MODELS (trained sequentially)                        │
-  │                                                                 │
-  │  A. Benchmark-Aware Era-Boosted LGB (3 seeds)         [35%]    │
-  │     → 10k trees + medium + benchmarks + 15-iter era boost       │
-  │     → learns what the meta-model misses                         │
-  │                                                                 │
-  │  B. Multi-Target Blend LGB (6 targets × 1 model)     [20%]    │
-  │     → rank-average across targets for diversity                 │
-  │     → different targets ≈ different signal facets               │
-  │                                                                 │
-  │  C. Residual Model LGB (2 seeds)                      [20%]    │
-  │     → target = ender - benchmark_ender                          │
-  │     → orthogonal to meta BY CONSTRUCTION                        │
-  │                                                                 │
-  │  D. CatBoost (2 seeds)                                [15%]    │
-  │     → symmetric/oblivious trees = different inductive bias      │
-  │     → uncorrelated errors with LGB                              │
-  │                                                                 │
-  │  E. FT-Transformer (1 model, last 300 eras)           [10%]    │
-  │     → attention-based, orthogonal to ALL tree models            │
-  │     → captures feature interactions trees miss                  │
-  └─────────────────────────────────────────────────────────────────┘
-                               ▼
-  ┌─────────────────────────────────────────────────────────────────┐
-  │  ENSEMBLE LAYER                                                 │
-  │  • Per-component rank normalization [0,1]                       │
-  │  • Weighted average (weights calibrated from validation sharpe) │
-  │  • Gaussianization of final blend                               │
-  └─────────────────────────────────────────────────────────────────┘
-                               ▼
-  ┌─────────────────────────────────────────────────────────────────┐
-  │  POST-PROCESSING                                                │
-  │  • Feature neutralization (top-50 exposed features, prop=P)     │
-  │  • Benchmark orthogonalization (optional per slot)              │
-  │  • Re-gaussianization → uniform rank                            │
-  └─────────────────────────────────────────────────────────────────┘
-                               ▼
-  ┌─────────────────────────────────────────────────────────────────┐
-  │  SUBMISSION (up to 5 slots, differentiated neutralization)      │
-  │  Each slot applies different neutralization strength:           │
-  │  • p=0.25 → high CORR, low MMC                                 │
-  │  • p=0.50 → balanced                                           │
-  │  • p=0.75 → high MMC                                           │
-  │  • p=1.00 → max MMC, sacrifice CORR                            │
-  └─────────────────────────────────────────────────────────────────┘
-
-RUNTIME: ~100-130 min on M-series Mac (sequential training)
-MEMORY:  ~4GB peak (float32, column-pruned, sequential models)
-
-Usage:
-    python solstice.py --train --submit    # Full pipeline
-    python solstice.py --submit            # Submit with saved model
-    python solstice.py --train             # Train only (no submit)
-    python solstice.py --evaluate          # Evaluate saved model on validation
+Five component models are hypotheses for comparison, not established alpha.
+Validation is partitioned chronologically for early stopping, calibration and
+reserved evaluation. Historical data has already been inspected; the split
+alone is not new out-of-sample evidence. See README for v5 retirement status.
 """
 
 import argparse
@@ -81,6 +19,7 @@ from scipy.stats import spearmanr, rankdata, norm
 from sklearn.linear_model import Ridge
 
 import config
+from validation import chronological_split
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -313,11 +252,10 @@ def train_multi_target(train, all_feature_cols):
 
 def train_residual(train, features):
     """
-    Predict (target - benchmark) = pure orthogonal signal.
+    Fit target minus benchmark using raw features.
 
-    Uses ONLY raw features (no benchmarks as input) to avoid leakage.
-    The residual is orthogonal to the meta-model BY CONSTRUCTION,
-    making it a direct contributor to MMC.
+    Subtraction is not a statistical projection: neither prediction
+    orthogonality nor incremental MMC follows by construction.
 
     Returns:
         List of trained LGB models (one per seed)
@@ -348,8 +286,8 @@ def train_catboost(train, all_feature_cols):
     """
     Symmetric/oblivious trees with fundamentally different inductive bias.
 
-    CatBoost uses balanced tree splits, producing predictions with
-    uncorrelated errors relative to LGB's asymmetric trees.
+    CatBoost uses balanced tree splits. Error correlation with LightGBM
+    and incremental ensemble value must be measured.
 
     Returns:
         List of trained CatBoost models (one per seed)
@@ -378,10 +316,9 @@ def train_catboost(train, all_feature_cols):
 
 def train_ft_transformer(train, val, all_feature_cols):
     """
-    Attention-based tabular model, orthogonal to ALL tree-based models.
+    Attention-based tabular model with a different inductive bias.
 
-    Since the meta-model is dominated by GBDTs, a transformer contributes
-    unique signal that nobody else has → high MMC contribution.
+    Diversification and MMC contribution require empirical evaluation.
 
     Trained on last 300 eras with early stopping on validation subset.
 
@@ -678,13 +615,13 @@ def two_stage_neutralize(preds, features_df, bench_df, feat_prop, bench_prop):
 # ═══════════════════════════════════════════════════════════════════
 
 
-def evaluate_pipeline(predictions, val, features, bench_cols, all_feature_cols, weights):
-    """Full evaluation: raw ensemble + all neutralization variants."""
+def evaluate_pipeline(predictions, val, features, bench_cols, all_feature_cols, weights, evaluation_eras):
+    """Report reserved evaluation metrics; neutralization variants are diagnostics."""
     targets = val[config.PRIMARY_TARGET].values
     eras = val["era"].values
-    unique_eras = sorted(val["era"].unique())
-    eval_eras = unique_eras[-95:]  # Last 95 eras for robust evaluation
-    eval_mask = np.isin(eras, eval_eras)
+    eval_mask = np.isin(eras, evaluation_eras)
+    if not eval_mask.any():
+        raise ValueError("no reserved evaluation rows available")
 
     # Raw ensemble
     ensemble = weighted_rank_ensemble(predictions, weights)
@@ -798,6 +735,14 @@ def main():
         train_df, bench_cols = load_data(features, "train")
         val_df, _ = load_data(features, "validation")
         all_feature_cols = features + bench_cols
+        val_df = val_df.dropna(subset=[config.PRIMARY_TARGET])
+        split = chronological_split(
+            val_df["era"].unique(), evaluation_eras=config.EVALUATION_ERAS,
+            calibration_eras=config.CALIBRATION_ERAS,
+            embargo_eras=config.VALIDATION_EMBARGO_ERAS,
+            min_early_stopping_eras=config.FT_VAL_ERAS,
+        )
+        stop_df = val_df[val_df["era"].isin(split.early_stopping)]
 
         # ── Train all components ────────────────────────────────────
         log("\n[4/8] Component A: Benchmark-Aware Era-Boosted LGB...")
@@ -813,7 +758,7 @@ def main():
         cb_models = train_catboost(train_df, all_feature_cols)
 
         log("\n[8/8] Component E: FT-Transformer...")
-        ft_result = train_ft_transformer(train_df, val_df, all_feature_cols)
+        ft_result = train_ft_transformer(train_df, stop_df, all_feature_cols)
 
         models_dict = {
             "benchmark_era_boost": bench_models,
@@ -827,18 +772,16 @@ def main():
         log("\nEvaluating on validation...")
         val_predictions = predict_all_components(models_dict, val_df, features, bench_cols, all_feature_cols)
 
-        val_eras = sorted(val_df["era"].unique())
-        eval_eras = val_eras[-95:]
-        eval_mask = np.isin(val_df["era"].values, eval_eras)
+        calibration_mask = np.isin(val_df["era"].values, split.calibration)
         calibrated_weights = calibrate_weights(
-            {k: v[eval_mask] for k, v in val_predictions.items()},
-            val_df[config.PRIMARY_TARGET].values[eval_mask],
-            val_df["era"].values[eval_mask],
+            {k: v[calibration_mask] for k, v in val_predictions.items()},
+            val_df[config.PRIMARY_TARGET].values[calibration_mask],
+            val_df["era"].values[calibration_mask],
             config.COMPONENT_WEIGHTS,
         )
 
-        log("Full evaluation (last 95 val eras):")
-        evaluate_pipeline(val_predictions, val_df, features, bench_cols, all_feature_cols, calibrated_weights)
+        log("Reserved chronological evaluation (previously inspected historical data):")
+        evaluate_pipeline(val_predictions, val_df, features, bench_cols, all_feature_cols, calibrated_weights, split.evaluation)
 
         # ── Save ────────────────────────────────────────────────────
         log("\nSaving models...")
@@ -851,6 +794,9 @@ def main():
             "catboost": cb_models,
             "ft_stats": (ft_result[1], ft_result[2]),
             "calibrated_weights": calibrated_weights,
+            "validation_split": split.as_dict(),
+            "data_version": config.DATA_VERSION,
+            "primary_target": config.PRIMARY_TARGET,
             "config": {
                 "features": features,
                 "bench_cols": bench_cols,
@@ -873,6 +819,10 @@ def main():
         log("\nLoading saved model for evaluation...")
         with open(model_path, "rb") as f:
             save_data = pickle.load(f)
+        if "validation_split" not in save_data:
+            raise ValueError("legacy checkpoint has no isolated evaluation split; retrain before evaluation")
+        if save_data.get("data_version") != config.DATA_VERSION or save_data.get("primary_target") != config.PRIMARY_TARGET:
+            raise ValueError("checkpoint data version or target does not match configuration")
 
         import torch
         from rtdl_revisiting_models import FTTransformer
@@ -914,7 +864,7 @@ def main():
 
         val_df, _ = load_data(features, "validation")
         val_predictions = predict_all_components(models_dict, val_df, features, bench_cols, all_feature_cols)
-        evaluate_pipeline(val_predictions, val_df, features, bench_cols, all_feature_cols, weights)
+        evaluate_pipeline(val_predictions, val_df, features, bench_cols, all_feature_cols, weights, save_data["validation_split"]["evaluation"])
 
     if args.submit:
         # Load saved model and submit

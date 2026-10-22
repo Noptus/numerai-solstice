@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 # ═══════════════════════════════════════════════════════════════════
 # API Credentials (from .env)
@@ -186,3 +186,8 @@ SEEDS_RESIDUAL = [42, 123]          # 2 seeds for component C
 SEEDS_CATBOOST = [42, 123]          # 2 seeds for component D
 FT_TRAIN_ERAS = 300                 # Use last N eras for FT-Transformer
 FT_VAL_ERAS = 50                    # Validation subset for early stopping
+
+# v5 experiment partitions. Review embargo against era spacing and target horizon.
+EVALUATION_ERAS = 95
+CALIBRATION_ERAS = 95
+VALIDATION_EMBARGO_ERAS = 4
