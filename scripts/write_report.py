@@ -64,6 +64,35 @@ def write(root, output, figure="holdout.svg"):
         key=lambda name: cv[name]["ncorr"]["mean"] - c["selection_risk_penalty"] * cv[name]["ncorr"]["std"],
         reverse=True,
     )
+    cv_benchmark_note = ""
+    if (root / "cv_benchmark_comparison.json").exists():
+        development = read("cv_benchmark_comparison.json")
+        windows = development["windows"]
+        comparison_rows = []
+        for name in [*cv_order, c["benchmark"]]:
+            values = development["models"][name]
+            cells = " | ".join(f"{values['by_window'][w]:.6f}" for w in windows)
+            comparison_rows.append(f"| `{name}` | {cells} | {values['mean_ncorr']:.6f} |")
+        cv_benchmark_note = (
+            "### Public benchmark on development dates\n\n"
+            "These are development summaries, not independent improvement tests. "
+            "All candidates and the public benchmark use the same evaluation stocks/dates.\n\n"
+            + "| Model | "
+            + " | ".join(windows)
+            + " | Pooled mean |\n"
+            + "| --- | "
+            + " | ".join(["---:"] * (len(windows) + 1))
+            + " |\n"
+            + "\n".join(comparison_rows)
+            + f"\n\n[Complete CV benchmark scores]({root.name}/cv_benchmark_scores.csv).\n"
+        )
+    attribution_note = (
+        "Only the static control versus `quarterly-full` isolates the refit-policy change. "
+        "The other candidates change parameter bundles, so their differences cannot be attributed "
+        "to stopping or bagging alone."
+        if any(m.get("refit_every_dates", 0) for m in c["models"])
+        else ""
+    )
     fits = read("model_fits.json")
     cv_rows = []
     for name in cv_order:
@@ -138,10 +167,14 @@ These are the complete CV results, including losing candidates. Candidates marke
 | --- | ---: | ---: | ---: | ---: |
 {chr(10).join(cv_rows)}
 
+{attribution_note}
+
+{cv_benchmark_note}
+
 ## Measured compute and data
 
 - Research wall time: **{wall}**, including sampling, prediction, scoring and calibration; excludes download and later export/reporting.
-- Model fits: **{len(fits)}**, totaling **{sum(f["fit_seconds"] for f in fits) / 60:.1f} fit minutes**. [Fit metadata]({path}/model_fits.json) includes row counts, dates, tree counts, seeds and hashes.
+- Candidate refits: **{len(fits)}**, totaling **{sum(f["fit_seconds"] for f in fits) / 60:.1f} fit minutes**. [Fit metadata]({path}/model_fits.json) includes row counts, dates, tree counts, seeds and hashes. Each early-stopped tree refit includes a separate inner fit; this count refers to top-level candidate refits.
 - Largest fit: **{max(f["rows"] for f in fits):,}** training observations; deterministic cap of **{c["max_train_rows_per_date"]:,}** per date. Evaluation stocks were not sampled.
 - Snapshot files: **{sum(v["bytes"] for v in plan["dataset"].values()) / 2**30:.2f} GiB**, including supplied neutralizers and the dated live preview.
 - Source, exact dependency versions, complete configuration and dataset hashes: [frozen plan]({path}/plan.json). Training source commit: `{source_commit}`. Use the source hashes recorded with this experiment.

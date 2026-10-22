@@ -9,6 +9,8 @@ Planned October 22, 2026, before this study's fits or scores. Configuration: `co
 3. Do row bagging and more features per tree help, with conservative leaves and L2 regularization?
 4. Does a predeclared 2,500-tree budget avoid underfitting from noisy inner RMSE stopping? This candidate deliberately gives up adaptive inner stopping; it cannot use evaluation labels to select its tree count.
 
+**Attribution limit:** only `static-full-control` versus `quarterly-full` changes one factor. The bagged and fixed-budget candidates change parameter bundles (including feature fraction, leaves or bagging), so their score differences cannot establish that early stopping or bagging alone caused an improvement.
+
 Four candidates, three forward CV windows, one calibration year, one reused historical window. Six CPU threads; one fit at a time, 2,000 training observations per date, all 1,039 numeric features, one common seed. No adaptive expansion after inspecting scores. At most three CV-shortlisted models enter four greedy blend steps, an equal-weight comparison and neutralization strengths 0 and 0.5: at most 15 logged calibration trials.
 
 At each 13-date boundary, eligible training dates are strictly earlier than that boundary minus 90 business days. A previous evaluation date may enter later training only once this gap has elapsed. All feature/target rows after that cutoff remain excluded from fitting. Every eligible evaluation stock is predicted once. Each refit is checkpointed and records training, stopping and prediction dates. Scores are aggregated only after predictions are complete.
