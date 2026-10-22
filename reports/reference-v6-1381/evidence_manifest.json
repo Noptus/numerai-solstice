@@ -1,0 +1,25 @@
+{
+  "files": {
+    "benchmark_comparison.json": "5dc058488cd0c09f05e3ac7a719d17076c6b2f327c3fc44ab595388a991da161",
+    "calibration_scores.csv": "0862e49465a2ea74c096f287661fa5cc769cf3fe6d09d6caee51d3d02bf8a02b",
+    "calibration_summary.json": "be93738912787a94d8596751352f3b5e01a214dcb8ec7ddbf7dd4b05dc4f2798",
+    "calibration_trials.json": "f3b6144577a77042c063d131b9fb24aff25a47ad3e50e0ccf5aebbfd53543de1",
+    "cv_scores.csv": "2acca862b1be2eb194a6a21fb73442b0b471e2d493bd6a6dc7786e75bff2694c",
+    "cv_summary.json": "2573f64db523736c1b74c8990a85c2a6a307ea8b3b9c64bb1587f051ff813922",
+    "execution.json": "28087c12f78cf80f43f05750fe05f4a1aaf8a457bfc8b484a0de5152c1f30250",
+    "hardware.json": "965f1a62296fbf7aced08fa312234951c13e269b98ce918f63aab267a4079fc8",
+    "holdout_access.json": "d25a4bff32f855f4e630dd4836a198d06b9d3455256cd81ff2d07fa7f8062a2c",
+    "holdout_comparison_scores.csv": "682c72679de50693adbdc181ec7e870005070a76a6919a4e242fcb8814f7fd7e",
+    "holdout_scores.csv": "9d18e7300b7f2779f88be05f8d79853c0b5a9fb61438e21041f8f91ba47f072f",
+    "holdout_summary.json": "a3fb45fd6786253d3c30b2746eb6fb37924b0b1bd8ae9846348d5849b516a074",
+    "inference.json": "09748de0b875c59f3e2d34584ca78f877aa311ff5ffe19c1b4d0ec1c990fbdf6",
+    "live_export.json": "dc6f96e919d188e60dfa145b55cdcce89b7eef4a7d6dd316ee298ce1d8605487",
+    "model_fits.json": "84de8dd57b8e7786394e19749a32bfaca54b9c3b81a0485cec055a541a49d182",
+    "plan.json": "eeb1f5dd4d88fdc210d879a4cbb16dd5c5d56b679b96f583b9f36340cdb6241a",
+    "result.json": "7b509508504094bcee0e13ec6e1a61bfc677252cc8675445bd739b9fea8b225d",
+    "score_parity.json": "d5b129dd029f570338081ac8f4f6386666c1850c6792a88a0fbcb186e70e5662",
+    "selection.json": "fdb860b905e8684045801ea65906a550a27cf37baed3d38926d45f4bfa4384f7"
+  },
+  "packaged_at_utc": "2026-10-22T13:08:36.332363+00:00",
+  "scope": "date scores, run provenance and fit metadata; no raw observations or model binaries"
+}

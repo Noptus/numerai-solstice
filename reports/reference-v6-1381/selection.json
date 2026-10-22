@@ -1,0 +1,21 @@
+{
+  "calibration_trials": 65,
+  "fingerprint": "2f7fcab00b2067b2a234146b614eb228ef41016edd2e8233bcd715b7c111117d",
+  "frozen_at_utc": "2026-10-22T12:38:54.717691+00:00",
+  "neutralization": 0.5,
+  "objective": "mean date NCORR minus 0.25 times standard deviation",
+  "selection_sha256": "ee989623c0f3cf4d06f8056bd6524f583f85083e87822c91d8c5e37cb6d6d249",
+  "shortlist": [
+    "era-boost-ablation",
+    "balanced-medium",
+    "slow-medium",
+    "factor-target",
+    "ridge-medium"
+  ],
+  "trial_log_sha256": "f3b6144577a77042c063d131b9fb24aff25a47ad3e50e0ccf5aebbfd53543de1",
+  "weights": {
+    "balanced-medium": 0.2222222222222222,
+    "ridge-medium": 0.4444444444444444,
+    "slow-medium": 0.3333333333333333
+  }
+}

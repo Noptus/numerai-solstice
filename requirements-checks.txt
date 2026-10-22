@@ -1,4 +1,5 @@
-# Lightweight orchestration checks; no model training frameworks or data access.
+# Legacy v5 unit files only; see docs/LEGACY_V5.md for discovery patterns.
+# The complete v6 suite uses the locked pyproject dev dependencies.
 numpy>=1.24
 pandas>=2.0
 scipy>=1.10

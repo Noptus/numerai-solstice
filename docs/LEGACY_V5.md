@@ -1,4 +1,6 @@
-# Numerai Solstice
+# Legacy Solstice v5.2
+
+Historical implementation guide. For the tested v6 pipeline and measured experiments, use the [current README](../README.md). Statements below describe the legacy cleanup, before the v6 migration.
 
 [![Research checks](https://github.com/Noptus/numerai-solstice/actions/workflows/tests.yml/badge.svg)](https://github.com/Noptus/numerai-solstice/actions/workflows/tests.yml)
 
@@ -8,7 +10,7 @@
 
 A Python research pipeline for the Numerai tournament, combining tree-based models, a transformer, and configurable prediction neutralization.
 
-The public implementation is in [solstice.py](solstice.py), with experiment settings in [config.py](config.py). This repository demonstrates model-pipeline design. It does not establish a top-1% ranking, guaranteed profitability, or an independently validated improvement over the tournament benchmark.
+The public implementation is in [solstice.py](../solstice.py), with experiment settings in [config.py](../config.py). This repository demonstrates model-pipeline design. It does not establish a top-1% ranking, guaranteed profitability, or an independently validated improvement over the tournament benchmark.
 
 ## What is implemented
 
@@ -24,10 +26,10 @@ These are hypotheses to compare, not guarantees of diversification. Training on 
 
 | File | Responsibility |
 | --- | --- |
-| [solstice.py](solstice.py) | Data loading, component training, prediction, calibration and submission |
-| [config.py](config.py) | Features, targets, model parameters and ensemble weights |
-| [requirements.txt](requirements.txt) | Python dependencies |
-| [.env.example](.env.example) | Credential configuration template; use local values, never committed secrets |
+| [solstice.py](../solstice.py) | Data loading, component training, prediction, calibration and submission |
+| [config.py](../config.py) | Features, targets, model parameters and ensemble weights |
+| [requirements.txt](../requirements.txt) | Python dependencies |
+| [.env.example](../.env.example) | Credential configuration template; use local values, never committed secrets |
 
 ## Offline research checks
 
@@ -35,7 +37,9 @@ No data downloads or ML framework install are needed for these checks:
 
 ```bash
 python -m pip install -r requirements-checks.txt
-python -m unittest discover -s tests -v
+python -m unittest discover -s tests -p 'test_validation.py' -v
+python -m unittest discover -s tests -p 'test_research_metrics.py' -v
+python -m unittest discover -s tests -p 'test_pipeline_isolation.py' -v
 python -m py_compile solstice.py config.py validation.py
 python solstice.py --help
 ```

@@ -87,8 +87,17 @@ def export(config, data, run, output):
     result.to_csv(part, index=False)
     part.replace(csv)
     artifacts[csv.name] = file_hash(csv)
+    frozen_plan = json.loads((runner.output / "plan.json").read_text())
     report = {
         "identity": identity,
+        "dataset_version": "v6.0",
+        "runtime": {"source": frozen_plan["source"], "dependencies": frozen_plan["dependencies"]},
+        "recipe": {
+            "weights": selected["weights"],
+            "neutralization": selected["neutralization"],
+            "neutralization_features": sets["medium"],
+            "purge_business_days": runner.experiment.purge_business_days,
+        },
         "date": str(date.date()),
         "rows": len(result),
         "models": metadata,

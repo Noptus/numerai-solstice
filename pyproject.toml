@@ -10,6 +10,7 @@ dependencies = [
 ]
 [project.optional-dependencies]
 dev = ["pytest>=8.3", "ruff>=0.9"]
+reports = ["matplotlib>=3.10"]
 [project.scripts]
 solstice = "research.cli:main"
 [build-system]

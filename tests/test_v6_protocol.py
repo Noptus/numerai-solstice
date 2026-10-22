@@ -1,6 +1,7 @@
 """Real parquet/CPU integration tests; public downloads and uploads are never used."""
 
 import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -193,12 +194,58 @@ def test_real_cpu_pipeline_seals_labels_and_resumes(snapshot, tmp_path, monkeypa
     assert exported["date"] == "2026-10-20"
     assert list(pd.read_csv(output / "live/predictions.csv")) == ["numerai_ticker", "date", "prediction"]
     assert export(config, root, output, output / "live") == exported
+    from scripts.download_live import download
+    from scripts.predict_bundle import predict
+
+    class LiveClient:
+        def get_current_round(self):
+            return 124
+
+        def list_datasets(self, round_num):
+            assert round_num == 124
+            return ["v6.0/live.parquet"]
+
+        def download_dataset(self, name, path, round_num):
+            assert name == "v6.0/live.parquet" and round_num == 124
+            Path(path).write_bytes((root / "live.parquet").read_bytes())
+
+    live_only = tmp_path / "next-live"
+    assert download(live_only, client=LiveClient())["round"] == 124
+    assert len(list(live_only.glob("*.parquet"))) == 1
+    inference_path = tmp_path / "predictions.csv"
+    inferred = predict(output / "live", live_only, inference_path)
+    assert inferred["round"] == 124 and inferred["rows"] == 45
+    np.testing.assert_allclose(
+        pd.read_csv(inference_path).prediction,
+        pd.read_csv(output / "live/predictions.csv").prediction,
+        atol=1e-12,
+    )
+    with pytest.raises(ValueError, match="another snapshot"):
+        download(live_only, round_num=125, client=LiveClient())
+    with pytest.raises(ValueError, match="immutable"):
+        predict(output / "live", live_only, output / "live/predictions.csv")
     from scripts.package_report import package
     from scripts.verify_report import verify
 
     evidence = tmp_path / "portable-evidence"
     package(output, evidence)
     assert verify(evidence)["verified_files"] >= 14
+    from scripts.download_reference import restore
+
+    class CachedClient:
+        def list_datasets(self, round_num):
+            assert round_num == 123
+            return ["v6.0/" + name for name in json.loads((root / "snapshot.json").read_text())["files"]]
+
+        def download_dataset(self, *args, **kwargs):
+            pytest.fail("cached reference sources unexpectedly downloaded")
+
+    assert restore(evidence, root, client=CachedClient())["verified_files"] == 8
+    from scripts.write_report import write
+
+    narrative = tmp_path / "report.md"
+    write(evidence, narrative)
+    assert "paired mean NCORR difference" in narrative.read_text()
     (evidence / "cv_scores.csv").write_text("changed")
     with pytest.raises(ValueError, match="evidence changed"):
         verify(evidence)

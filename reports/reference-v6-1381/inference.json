@@ -1,0 +1,11 @@
+{
+  "bundle_sha256": "dc6f96e919d188e60dfa145b55cdcce89b7eef4a7d6dd316ee298ce1d8605487",
+  "dataset_version": "v6.0",
+  "date": "2026-10-20",
+  "live_sha256": "760d4aea7912aa6dd9de08f64b2a570763f36935266c717b89f0b61bbb3b74b4",
+  "predictions_sha256": "75c00a6358c371c7023e3bee6eac005b355a8e0c1b7ee452d4db2ba23d609a79",
+  "round": 1381,
+  "rows": 7153,
+  "seconds": 0.364,
+  "status": "local inference only; no labels, refitting, upload, staking or trading"
+}

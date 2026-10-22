@@ -1,0 +1,10 @@
+{
+  "cpu": "Apple M5",
+  "logical_cpus": 10,
+  "memory_gib": 32,
+  "training_threads": 6,
+  "accelerator": "CPU only",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "training_source_commit": "6fa1500222fbb9fcde72775bdc3898de476d8a5d",
+  "note": "Research package source hashes match the frozen run plan; reporting helpers are separate."
+}

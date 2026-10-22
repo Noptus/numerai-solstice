@@ -6,11 +6,19 @@ Reproducible **Numerai v6** research on a local CPU: purged walk-forward validat
 
 AI-assisted implementation. The repository makes its data, tests, search budget and evaluation boundaries inspectable. Historical tournament scores do not establish live investment performance.
 
+## Measured reference
+
+The first frozen study scored **0.01689 mean NCORR** across 59 historical evaluation dates, versus **0.00410** for its simple baseline and **0.02784** for the public benchmark. The custom blend improved on its control and still lagged the stronger benchmark. [Complete results, uncertainty and all trials](reports/README.md).
+
+A trusted model bundle produced **7,153 dated predictions in 0.364 seconds** inside the inference function, including integrity checks and file loading. This is a local timing on the reference Mac, not a live investment result. An expanded full-feature follow-up is in progress; the same historical period is now exploratory.
+
 ## Run it
 
 Python 3.12+, macOS or Linux, and [uv](https://docs.astral.sh/uv/getting-started/installation/). The default experiment uses six CPU threads, one model at a time and at most 1,500 training observations per date. The measured reference machine has 32 GiB RAM. Raw data and model artifacts stay outside Git.
 
 ```bash
+git clone https://github.com/Noptus/numerai-solstice.git
+cd numerai-solstice
 uv sync --frozen --extra dev --no-editable
 uv run --frozen --no-editable solstice plan --config configs/mac.toml
 uv run --frozen --no-editable pytest
@@ -66,6 +74,8 @@ The reserved holdout is historical public data, not a claim that nobody has prev
 | [`tests/`](tests/) | Numerical parity, isolation failures and real synthetic-data CPU integration |
 | [`docs/RESEARCH.md`](docs/RESEARCH.md) | Technique sources, assumptions and next experiments |
 
+The supplied plan loads the medium feature set for exposure postprocessing. Custom plans must retain a medium-feature candidate so those columns remain available.
+
 Individual stages are available as `solstice train --stage cv`, `score --stage cv`, `train --stage calibration`, `score --stage calibration`, `select`, and `finalize`. Use the same `--config`, `--data` and `--output` throughout. Running `finalize` again returns its saved result rather than evaluating the holdout again.
 
 A prediction export refits the frozen selection on eligible history from the pinned round:
@@ -74,6 +84,17 @@ A prediction export refits the frozen selection on eligible history from the pin
 uv run --frozen --no-editable python -m scripts.export_live \
   --run runs/mac-v6 --output runs/mac-v6/live-export
 ```
+
+After that export, inference can use a separate live-only snapshot with no training labels or refit:
+
+```bash
+uv run --frozen --no-editable python -m scripts.download_live --data data/next-live
+uv run --frozen --no-editable python -m scripts.predict_bundle \
+  --bundle runs/mac-v6/live-export --data data/next-live \
+  --output runs/next-live-predictions.csv
+```
+
+Use a fresh data directory for each new round; existing snapshots stay pinned. Inference verifies model, source, dependency and live-file hashes and preserves every ticker/date key.
 
 The export writes dated ticker/date predictions and an integrity manifest. It does not upload, stake or trade. A historical snapshot is not a current-round submission. Check current Numerai requirements before independently arranging deployment. Pickled models are local trusted artifacts; do not load checkpoints from untrusted sources.
 

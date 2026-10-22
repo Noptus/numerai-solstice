@@ -13,3 +13,6 @@ __pycache__/
 runs/
 .pytest_cache/
 .ruff_cache/
+
+# PNG previews are local; publish the text SVG research figure.
+reports/*.png
