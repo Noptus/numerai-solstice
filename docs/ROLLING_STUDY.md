@@ -13,7 +13,7 @@ Four candidates, three forward CV windows, one calibration year, one reused hist
 
 At each 13-date boundary, eligible training dates are strictly earlier than that boundary minus 90 business days. A previous evaluation date may enter later training only once this gap has elapsed. All feature/target rows after that cutoff remain excluded from fitting. Every eligible evaluation stock is predicted once. Each refit is checkpointed and records training, stopping and prediction dates. Scores are aggregated only after predictions are complete.
 
-The first three candidates use the existing purged 26-date inner stopping block. The fourth uses its fixed budget. The supplied benchmark is scored on identical stocks/dates; its own data budget and training policy are not replicated. Quarterly refits, bagging, larger samples and different stopping are hypotheses, not established advantages.
+The first three candidates use the existing purged 26-date inner stopping block. The fourth uses its fixed budget. Development CV diagnostics also compare all four candidates with the public benchmark, without changing the candidate list or selection rule. Per-window and pooled CV means are development summaries, without independent significance claims. The supplied benchmark is scored on identical stocks/dates; its own data budget and training policy are not replicated. Quarterly refits, bagging, larger samples and different stopping are hypotheses, not established advantages.
 
 ## Why these techniques
 

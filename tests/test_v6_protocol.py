@@ -198,6 +198,11 @@ def test_real_cpu_pipeline_seals_labels_and_resumes(snapshot, tmp_path, monkeypa
     first_date = pd.read_parquet(baseline_predictions).date.iloc[0]
     parity = check(root, baseline_predictions, first_date)
     assert parity["max_absolute_difference"] < 1e-8
+    from scripts.cv_benchmark_report import compare as compare_cv
+
+    cv_comparison = compare_cv(config, root, output)
+    assert cv_comparison["dates"] > 0
+    assert cv_comparison["models"]["lgbm_jupiter_60"]["mean_gain_vs_public_benchmark"] == 0
     from scripts.benchmark_report import compare
 
     comparison = compare(config, root, output)

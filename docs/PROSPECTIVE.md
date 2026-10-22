@@ -41,6 +41,6 @@ uv run --frozen --no-editable python -m scripts.prospective score \
   --output runs/prospective-v6/interim-score.json
 ```
 
-The evaluator verifies every committed CSV hash, waits for complete targets, joins the exact ticker/date universe and scores the model alongside `lgbm_jupiter_60` with Numerai's neutralizers. A stock-universe mismatch fails instead of selecting a favorable subset. It reports per-date scores, a paired NCORR difference, pending dates, missing ISO weeks and scoring-file hashes. Outcomes cannot alter committed predictions.
+The evaluator verifies every committed CSV hash, waits for complete targets, joins the exact ticker/date universe and scores the model alongside `lgbm_jupiter_60` with Numerai's neutralizers. A stock-universe mismatch fails instead of selecting a favorable subset. It reports per-date scores, a paired NCORR difference, pending dates, missing ISO weeks between captures, all unrecorded weeks since freezing, and scoring-file hashes. Outcomes cannot alter committed predictions.
 
 Fewer than 52 matured weekly dates is explicitly interim. Fifty-two weeks is only a reporting threshold; overlapping 60-day outcomes, model aging, missing weeks and serial dependence can still make inference weak. Inspect the paired block interval and contribution separately. There is no automated benchmark-win declaration. Scores are not returns, and no submissions, staking or trading are performed.

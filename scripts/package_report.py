@@ -37,6 +37,9 @@ def package(run, output, log=None):
     output.mkdir(parents=True, exist_ok=True)
     for name in REPORT_FILES:
         shutil.copyfile(run / name, output / name)
+    for name in ("cv_benchmark_scores.csv", "cv_benchmark_comparison.json"):
+        if (run / name).is_file():
+            shutil.copyfile(run / name, output / name)
     fits = []
     for path in sorted(run.glob("*/*/*.json")):
         meta = json.loads(path.read_text())

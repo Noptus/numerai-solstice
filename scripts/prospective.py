@@ -195,12 +195,17 @@ def evaluate(root, data):
     expected_weeks = {
         (d.isocalendar().year, d.isocalendar().week) for d in pd.date_range(first, last, freq="D")
     }
+    planned_weeks = {
+        (d.isocalendar().year, d.isocalendar().week)
+        for d in pd.date_range(plan["first_prediction_date"], utc_now().date(), freq="D")
+    }
     return {
         "inputs": inputs,
         "scores": rows,
         "mature_dates": len(rows),
         "pending_dates": pending,
         "missing_iso_weeks_between_first_and_last": sorted(expected_weeks - captured_weeks),
+        "unrecorded_iso_weeks_since_freeze": sorted(planned_weeks - captured_weeks),
         "paired_ncorr_gain_vs_public_benchmark": summary(delta, block_size=plan["bootstrap_block_dates"])
         if len(delta) >= 2
         else None,
