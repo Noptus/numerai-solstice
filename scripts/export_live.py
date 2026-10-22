@@ -6,6 +6,8 @@ import argparse
 import fcntl
 import json
 import pickle
+import shutil
+from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -57,9 +59,31 @@ def export(config, data, run, output):
     eligible = frame.loc[prior_training_mask(frame.date, date, runner.experiment.purge_business_days)]
     specs = {spec.name: spec for spec in runner.experiment.models}
     names, predictions, metadata, artifacts = [], [], {}, {}
+    fitted_recipes = {}
     for name in selected["weights"]:
-        event("live_fit_start", model=name, date=str(date.date()))
         spec = specs[name]
+        recipe = asdict(spec)
+        # Names and historical refresh cadence do not affect a fit on the same
+        # eligible rows. Only deterministic LightGBM recipes are reused.
+        recipe.pop("name")
+        recipe.pop("refit_every_dates")
+        signature = digest({"spec": recipe, "features": sets[spec.feature_set]})
+        if spec.kind == "lightgbm" and signature in fitted_recipes:
+            original = fitted_recipes[signature]
+            path = output / f"{name}.pkl"
+            shutil.copyfile(output / f"{original['name']}.pkl", path)
+            artifacts[path.name] = file_hash(path)
+            predictions.append(original["prediction"])
+            names.append(name)
+            metadata[name] = {
+                **original["metadata"],
+                "name": name,
+                "fit_seconds": 0.0,
+                "alias_of": original["name"],
+            }
+            event("live_fit_reused", model=name, alias_of=original["name"])
+            continue
+        event("live_fit_start", model=name, date=str(date.date()))
         sampled = sample_training(eligible, runner.experiment.max_train_rows_per_date, spec.seed)
         fitted = fit_model(sampled, sets[spec.feature_set], spec, runner.experiment)
         predictions.append(fitted.predict(live))
@@ -71,6 +95,12 @@ def export(config, data, run, output):
         part.replace(path)
         artifacts[path.name] = file_hash(path)
         metadata[name] = fitted.metadata
+        if spec.kind == "lightgbm":
+            fitted_recipes[signature] = {
+                "name": name,
+                "prediction": predictions[-1],
+                "metadata": fitted.metadata,
+            }
         event("live_fit_complete", model=name, seconds=fitted.metadata["fit_seconds"])
         del fitted, sampled
     with threadpool_limits(limits=runner.experiment.threads):
@@ -101,6 +131,7 @@ def export(config, data, run, output):
         "date": str(date.date()),
         "rows": len(result),
         "models": metadata,
+        "trained_model_count": sum("alias_of" not in value for value in metadata.values()),
         "key_sha256": digest(result[KEYS].to_dict(orient="records")),
         "artifacts": artifacts,
         "status": "dated local predictions only; not uploaded, staked, or traded",

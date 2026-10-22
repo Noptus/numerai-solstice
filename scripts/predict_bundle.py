@@ -40,11 +40,14 @@ def predict(bundle, data, output):
     recipe = spec["recipe"]
     if not recipe["weights"] or min(recipe["weights"].values()) <= 0:
         raise ValueError("bundle requires positive nonempty weights")
-    models = {}
+    models, binaries = {}, {}
     for name in recipe["weights"]:
         # Pickle is executable: load only your own trusted, hash-checked artifacts.
-        with (bundle / f"{name}.pkl").open("rb") as handle:
-            models[name] = pickle.load(handle)
+        identity = spec["artifacts"][f"{name}.pkl"]
+        if identity not in binaries:
+            with (bundle / f"{name}.pkl").open("rb") as handle:
+                binaries[identity] = pickle.load(handle)
+        models[name] = binaries[identity]
     features = list(
         dict.fromkeys(
             [*recipe["neutralization_features"], *(c for model in models.values() for c in model.features)]
@@ -59,7 +62,13 @@ def predict(bundle, data, output):
     cutoff = date - pd.offsets.BDay(recipe["purge_business_days"])
     if any(pd.Timestamp(model.metadata["last_date"]) >= cutoff for model in models.values()):
         raise ValueError("live date is too early for the model's training history")
-    matrix = np.column_stack([model.predict(frame) for model in models.values()])
+    evaluated, columns = {}, []
+    for name, model in models.items():
+        identity = spec["artifacts"][f"{name}.pkl"]
+        if identity not in evaluated:
+            evaluated[identity] = model.predict(frame)
+        columns.append(evaluated[identity])
+    matrix = np.column_stack(columns)
     weights = np.array(list(recipe["weights"].values()), dtype=float)
     ranks = percentile(matrix)
     total = sum(recipe["weights"].values())
@@ -87,6 +96,7 @@ def predict(bundle, data, output):
         "live_sha256": snapshot["files"]["live.parquet"]["sha256"],
         "predictions_sha256": file_hash(output),
         "seconds": round(time.monotonic() - started, 3),
+        "unique_models_evaluated": len(evaluated),
         "status": "local inference only; no labels, refitting, upload, staking or trading",
     }
     atomic_json(output.with_suffix(".json"), report)

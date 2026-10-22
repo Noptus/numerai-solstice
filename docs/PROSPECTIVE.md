@@ -2,7 +2,7 @@
 
 Historical results informed development. Another historical score does not make the old evaluation period unseen. The next defensible step is a publicly timestamped plan followed by predictions made before their outcomes exist.
 
-`scripts.prospective` supports a conservative **frozen-model** test. It does not refit quarterly during this evaluation. Historical rolling-policy results and a prospective fixed-bundle test are different experiments and must be described separately.
+`scripts.prospective` supports a conservative **frozen-model** test. It does not refit quarterly during this evaluation. Historical rolling-policy results and a prospective fixed-bundle test are different experiments and must be described separately. The dated export refreshes selected members on the same eligible history. Identical deterministic tree recipes can then share one fitted model, even when their historical refresh cadences differed. Export metadata records these aliases; frozen weights and prediction values are preserved. Inference loads and evaluates each identical model binary once.
 
 ## Freeze once
 

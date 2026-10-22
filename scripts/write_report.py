@@ -125,7 +125,7 @@ def write(root, output, figure="holdout.svg"):
     live_note = (
         f"The frozen selection was also refitted for the pinned **{live['date']}** snapshot: "
         f"**{live['rows']:,}** ticker/date predictions, with model and CSV hashes in "
-        f"[`live_export.json`]({path}/live_export.json). This dated local export was not uploaded, staked or traded."
+        f"[`live_export.json`]({path}/live_export.json). The export refreshes members on common eligible history and records any identical-recipe aliases. This frozen bundle is distinct from the historical refresh-policy test. This dated local export was not uploaded, staked or traded."
         if live
         else "No dated prediction export is included in this evidence package."
     )

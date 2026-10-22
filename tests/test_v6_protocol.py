@@ -453,3 +453,64 @@ def test_prospective_journal_rejects_replacement_and_waits_for_complete_labels(
     monkeypatch.setattr(prospective, "utc_now", lambda: datetime(2026, 10, 23, 12, tzinfo=timezone.utc))
     with pytest.raises(ValueError, match="fresh live date"):
         prospective.collect(bundle, root, journal)
+
+
+def test_identical_live_recipes_fit_and_predict_once_without_changing_the_blend(
+    snapshot, tmp_path, monkeypatch
+):
+    from dataclasses import replace
+    from types import SimpleNamespace
+
+    from research.models import FittedModel
+    from scripts import export_live
+    from scripts.predict_bundle import predict
+
+    root, config = snapshot
+    output = tmp_path / "study"
+    original_runner = Runner(config, root, output)
+    original_runner.run()
+    tree = original_runner.experiment.models[1]
+    a = replace(tree, name="static", refit_every_dates=0)
+    b = replace(tree, name="rolling", refit_every_dates=13)
+    selected = {
+        "weights": {"static": 0.25, "rolling": 0.75},
+        "neutralization": 0.0,
+        "selection_sha256": "test-frozen-selection",
+    }
+    # Test only export orchestration; the real runner's seal/integrity checks are
+    # exercised separately above. Both recipes fit real CPU trees on real parquet.
+    fake_runner = SimpleNamespace(
+        output=output,
+        fingerprint=original_runner.fingerprint,
+        experiment=replace(original_runner.experiment, models=(a, b)),
+        _selection=lambda: selected,
+        frame=original_runner.frame,
+        blend=original_runner.blend,
+    )
+    monkeypatch.setattr(export_live, "Runner", lambda *_: fake_runner)
+    original_fit, fits = export_live.fit_model, []
+
+    def counted_fit(*args, **kwargs):
+        fits.append(args[2].name)
+        return original_fit(*args, **kwargs)
+
+    monkeypatch.setattr(export_live, "fit_model", counted_fit)
+    bundle = output / "bundle"
+    report = export_live.export(config, root, output, bundle)
+    assert fits == ["static"]
+    assert report["trained_model_count"] == 1
+    assert report["models"]["rolling"]["alias_of"] == "static"
+    assert report["artifacts"]["static.pkl"] == report["artifacts"]["rolling.pkl"]
+    original_predict, calls = FittedModel.predict, []
+
+    def counted_predict(self, *args, **kwargs):
+        calls.append(self.metadata["name"])
+        return original_predict(self, *args, **kwargs)
+
+    monkeypatch.setattr(FittedModel, "predict", counted_predict)
+    csv = output / "inferred.csv"
+    inferred = predict(bundle, root, csv)
+    assert inferred["unique_models_evaluated"] == 1
+    assert calls == ["static"]
+    # Full weighted blend and CSV bytes remain identical, including unequal alias weights.
+    assert inferred["predictions_sha256"] == report["artifacts"]["predictions.csv"]
