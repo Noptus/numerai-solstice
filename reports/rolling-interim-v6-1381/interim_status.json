@@ -1,0 +1,29 @@
+{
+  "calibration_completed": false,
+  "completed_candidate_windows": [
+    "cv/fold1/quarterly-bagged.json",
+    "cv/fold1/quarterly-fixed-budget.json",
+    "cv/fold1/quarterly-full.json",
+    "cv/fold1/static-full-control.json",
+    "cv/fold2/quarterly-bagged.json",
+    "cv/fold2/quarterly-full.json",
+    "cv/fold2/static-full-control.json"
+  ],
+  "completed_refits": 29,
+  "fingerprint": "c4c5cd8ed35d1842bc7b3a968b35fce131742b72ba33a71598b0b19fba5b3a58",
+  "holdout_opened": false,
+  "incomplete_window": "fold2",
+  "local_artifact_hashes_verified_before_packaging": true,
+  "local_run_log_sha256": "134bb272eff3f45052ddb92dbbdb405576698a9200f180711d4e5ae33353955a",
+  "prospective_tracking_activated": false,
+  "reason": "User requested a short final wrap-up. Stop was not triggered by a score threshold. Retain all completed checkpoints, including losing candidates; do not interpret partial CV as a final selection.",
+  "recorded_at_utc": "2026-10-22T17:10:42.875408+00:00",
+  "reported_development_windows": [
+    "fold1"
+  ],
+  "resume": ".venv/bin/python -m research run --config configs/rolling.toml --output runs/mac-rolling-v6-1381",
+  "selection_completed": false,
+  "status": "stopped_at_user_requested_wrap_up",
+  "study_complete": false,
+  "unstarted_window": "fold3"
+}

@@ -1,0 +1,190 @@
+{
+  "created_at_utc": "2026-10-22T14:19:42.667119+00:00",
+  "dataset": {
+    "features.json": {
+      "bytes": 47870,
+      "sha256": "ee6c00bc9d5cb78aaab986630138512945301a3c588865ad61da5d0dea5ff634"
+    },
+    "live.parquet": {
+      "bytes": 4436818,
+      "sha256": "760d4aea7912aa6dd9de08f64b2a570763f36935266c717b89f0b61bbb3b74b4"
+    },
+    "live_benchmark_models.parquet": {
+      "bytes": 93273,
+      "sha256": "4930e73837fbe68ffa2c5c0ae8709f9270caecc9ddb3146068d788715f7ad891"
+    },
+    "live_neutralizer.parquet": {
+      "bytes": 12296394,
+      "sha256": "5d97f9f4499e202ee00a5f7c59fa097d708fd0b00d4e6ba4e107aefd40dda4d5"
+    },
+    "train.parquet": {
+      "bytes": 2176229215,
+      "sha256": "bbfd61b4ea6cd0c050d3960162388a5b110bb0ec8ea3895c9c12157fcd38bd4f"
+    },
+    "validation.parquet": {
+      "bytes": 1396155054,
+      "sha256": "c1a8bbf2e50c9076ddc2c856d5908dccb6013f7a957e8b7f9b0f816eec78bb56"
+    },
+    "validation_benchmark_models.parquet": {
+      "bytes": 17266894,
+      "sha256": "5ac763949ab9233df9d17ceabfccad7a23b0611781977ff7ddf406a003dfaf5a"
+    },
+    "validation_neutralizer.parquet": {
+      "bytes": 4650158201,
+      "sha256": "7ed8be9b8653b324deedf5e1acbdc9d37bcbc601a95dadcf328a70bd77808b2e"
+    }
+  },
+  "dependencies": {
+    "lightgbm": "4.7.0",
+    "numerai-tools": "0.7.2",
+    "numpy": "2.5.4",
+    "pandas": "3.0.6",
+    "pyarrow": "26.0.0",
+    "scikit-learn": "1.9.1",
+    "scipy": "1.18.1"
+  },
+  "experiment": {
+    "benchmark": "lgbm_jupiter_60",
+    "bootstrap_block_dates": 16,
+    "calibration_end": "2024-12-27",
+    "calibration_start": "2024-01-05",
+    "early_stopping_dates": 26,
+    "early_stopping_rounds": 75,
+    "ensemble_steps": 4,
+    "folds": [
+      [
+        "2019-06-07",
+        "2020-06-05"
+      ],
+      [
+        "2021-06-04",
+        "2022-06-03"
+      ],
+      [
+        "2022-08-05",
+        "2023-07-28"
+      ]
+    ],
+    "historical_evaluation_status": "reused_exploratory",
+    "holdout_start": "2025-06-06",
+    "max_ensemble_models": 3,
+    "max_train_rows_per_date": 2000,
+    "models": [
+      {
+        "early_stopping": true,
+        "equal_date_weight": true,
+        "era_boost_steps": 0,
+        "feature_set": "all",
+        "half_life_weeks": null,
+        "kind": "lightgbm",
+        "name": "static-full-control",
+        "params": {
+          "colsample_bytree": 0.1,
+          "learning_rate": 0.01,
+          "max_depth": 8,
+          "min_child_samples": 2000,
+          "n_estimators": 1800,
+          "num_leaves": 127,
+          "reg_lambda": 10.0
+        },
+        "refit_every_dates": 0,
+        "seed": 42,
+        "target": "target_jupiter_60"
+      },
+      {
+        "early_stopping": true,
+        "equal_date_weight": true,
+        "era_boost_steps": 0,
+        "feature_set": "all",
+        "half_life_weeks": null,
+        "kind": "lightgbm",
+        "name": "quarterly-full",
+        "params": {
+          "colsample_bytree": 0.1,
+          "learning_rate": 0.01,
+          "max_depth": 8,
+          "min_child_samples": 2000,
+          "n_estimators": 1800,
+          "num_leaves": 127,
+          "reg_lambda": 10.0
+        },
+        "refit_every_dates": 13,
+        "seed": 42,
+        "target": "target_jupiter_60"
+      },
+      {
+        "early_stopping": true,
+        "equal_date_weight": true,
+        "era_boost_steps": 0,
+        "feature_set": "all",
+        "half_life_weeks": null,
+        "kind": "lightgbm",
+        "name": "quarterly-bagged",
+        "params": {
+          "colsample_bytree": 0.3,
+          "learning_rate": 0.01,
+          "max_depth": 7,
+          "min_child_samples": 2000,
+          "n_estimators": 3000,
+          "num_leaves": 63,
+          "reg_lambda": 10.0,
+          "subsample": 0.75,
+          "subsample_freq": 5
+        },
+        "refit_every_dates": 13,
+        "seed": 42,
+        "target": "target_jupiter_60"
+      },
+      {
+        "early_stopping": false,
+        "equal_date_weight": true,
+        "era_boost_steps": 0,
+        "feature_set": "all",
+        "half_life_weeks": null,
+        "kind": "lightgbm",
+        "name": "quarterly-fixed-budget",
+        "params": {
+          "colsample_bytree": 0.1,
+          "learning_rate": 0.01,
+          "max_depth": 7,
+          "min_child_samples": 2000,
+          "n_estimators": 2500,
+          "num_leaves": 63,
+          "reg_lambda": 10.0,
+          "subsample": 0.75,
+          "subsample_freq": 5
+        },
+        "refit_every_dates": 13,
+        "seed": 42,
+        "target": "target_jupiter_60"
+      }
+    ],
+    "name": "mac-v6-rolling-capacity",
+    "neutralization_proportions": [
+      0.0,
+      0.5
+    ],
+    "primary_target": "target_jupiter_60",
+    "prior_experiment_fingerprint": "f6240222064cbbc3041c09554a706ecf726e529c8ae3579813eb2854949fbf1b",
+    "purge_business_days": 90,
+    "selection_risk_penalty": 0.25,
+    "threads": 6,
+    "version": "v6.0"
+  },
+  "fingerprint": "c4c5cd8ed35d1842bc7b3a968b35fce131742b72ba33a71598b0b19fba5b3a58",
+  "holdout_status": "reused_exploratory",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "python": "3.12.12",
+  "round": 1381,
+  "source": {
+    "__init__.py": "bb02261d4a4d0ff42b5826f63e424f8b3d74b79c2072c68cd71fbb0759578f1c",
+    "__main__.py": "e7aab8c706aeb2f5296f151d9f5e0036bfb4fceb99c64f7c048d97bf4c78910c",
+    "cli.py": "970e958b93acadb8a02b2928786ceb02b107ee68212fb62275ba6eeda9317597",
+    "config.py": "32869e07c60796143a3b4ed6c7924d6f7102a6609f9fd2ec6f0c8d509d32e9ca",
+    "data.py": "54dde13c1187c1e5546f23961f4ce6cf32726f8304816465c3ca0f6159c0ae47",
+    "models.py": "29e08be54e5601b508ce168a99a8c2b358c321cc13a5dca593edf8481b6acfb7",
+    "runner.py": "4779001bd05e4f2f7748f9770c186a65798325097458958267a7d1cff6b46aac",
+    "scoring.py": "cbbbfa228a172efccb982e82ed44fe3b5d1768154775169fa7914c3056dbb455",
+    "validation.py": "35e79686142e8e1d6adb22768c9b0fc27f4e09e5f325f36f11cd446a809e6fb4"
+  }
+}

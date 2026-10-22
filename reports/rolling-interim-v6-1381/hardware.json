@@ -1,0 +1,8 @@
+{
+  "cpu": "Apple M5",
+  "logical_cpus": 10,
+  "memory_gib": 32,
+  "threads": 6,
+  "accelerator": "CPU only",
+  "training_source_commit": "d29860e3438711400a4aa2eedf9d3e7ee2aa6e50"
+}

@@ -1,0 +1,51 @@
+{
+  "analysis": "development CV comparison; no reselection and no independent significance claim",
+  "dates": 53,
+  "fingerprint": "c4c5cd8ed35d1842bc7b3a968b35fce131742b72ba33a71598b0b19fba5b3a58",
+  "models": {
+    "lgbm_jupiter_60": {
+      "by_window": {
+        "fold1": 0.03802143442362072
+      },
+      "date_score_std": 0.014503691396863689,
+      "mean_gain_vs_public_benchmark": 0.0,
+      "mean_ncorr": 0.03802143442362072
+    },
+    "quarterly-bagged": {
+      "by_window": {
+        "fold1": 0.014717430111457732
+      },
+      "date_score_std": 0.02051184824658376,
+      "mean_gain_vs_public_benchmark": -0.02330400431216299,
+      "mean_ncorr": 0.014717430111457732
+    },
+    "quarterly-fixed-budget": {
+      "by_window": {
+        "fold1": 0.03304267480718086
+      },
+      "date_score_std": 0.01593792344887718,
+      "mean_gain_vs_public_benchmark": -0.004978759616439862,
+      "mean_ncorr": 0.03304267480718086
+    },
+    "quarterly-full": {
+      "by_window": {
+        "fold1": 0.023266816044759324
+      },
+      "date_score_std": 0.016911783224205425,
+      "mean_gain_vs_public_benchmark": -0.014754618378861398,
+      "mean_ncorr": 0.023266816044759324
+    },
+    "static-full-control": {
+      "by_window": {
+        "fold1": 0.02425174363111281
+      },
+      "date_score_std": 0.01568037062114566,
+      "mean_gain_vs_public_benchmark": -0.013769690792507913,
+      "mean_ncorr": 0.02425174363111281
+    }
+  },
+  "report_source_sha256": "d1caac342d31392d4c72e5bfcf7776ae367064bbb3aa0cc50524d87dce7814b0",
+  "windows": [
+    "fold1"
+  ]
+}

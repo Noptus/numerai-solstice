@@ -1,0 +1,12 @@
+{
+  "files": {
+    "completed_refits.json": "a638eb8397495026a5947c805176cd8a53b215cf7e465b3fc996029fb3af6c9a",
+    "cv_benchmark_fold1_comparison.json": "1bfa8dec537dbb3c0037a862773756d0cec13809249ba424df324be4492ee3e7",
+    "cv_benchmark_fold1_scores.csv": "64360f1a7b47a74dfc0cf56c96e22d574d03a215ce4a01ab1b42c73a34f6e5e8",
+    "hardware.json": "0581448cfaaedca37c34ceb693c1b996a6959927927094d1a325c5bb601aa206",
+    "interim_status.json": "1e4f737f20858f45c8b538222000cbdc878913da60bcb31d2d94efdb177003f1",
+    "package_cache_check.json": "5094dc198ae2d58e11e8bf68a9bc998a0f3b786feb1134ef6a88f754c798a9b7",
+    "plan.json": "7aa13c760e659ac898d580c7266c4c3c4306b5a7d0e56d0261a095bb936e270f",
+    "score_parity.json": "9eeaadcf586e21a60f459e9e844c50ec6a100df99c598d8d466cad9d296b8e26"
+  }
+}

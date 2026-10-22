@@ -19,5 +19,7 @@ jobs:
       - run: uv run --frozen --no-editable pytest
       - run: uv run --frozen --no-editable python -m scripts.verify_report reports/reference-v6-1381
       - run: uv run --frozen --no-editable python -m scripts.verify_report reports/wide-v6-1381
+      - run: uv run --frozen --no-editable python -m scripts.verify_interim reports/rolling-interim-v6-1381
+      - run: uv run --frozen --no-editable solstice plan --config configs/rolling.toml
       - run: uv run --frozen --no-editable solstice plan --config configs/wide.toml
       - run: uv run --frozen --no-editable python -m py_compile solstice.py config.py validation.py

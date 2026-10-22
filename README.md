@@ -16,7 +16,7 @@ AI-assisted implementation. The repository makes its data, tests, search budget 
 
 The follow-up's point-estimate gain over the first study is small and its interval includes zero. These results support a reproducible research case study; they do not establish a live edge. Both reports retain losing candidates, all calibration trials and uncertainty.
 
-A new [predeclared rolling/capacity study](docs/ROLLING_STUDY.md) is running locally: four candidates, quarterly refits, larger training samples and a fixed-tree-budget ablation. Its reused historical evaluation remains exploratory.
+The [rolling/capacity study](reports/ROLLING_INTERIM.md) is saved as an **incomplete experiment**, with all completed checkpoints retained. On its first 53-date development window, the fixed-budget candidate scored **0.03304**, below the public benchmark at **0.03802**. These are different dates from the table above. No final selection or later evaluation was performed; this is not a benchmark win.
 
 A trusted model bundle produced **7,153 dated predictions in 0.391 seconds** inside the inference function, including file/hash checks. This is a local timing on the reference Mac; process startup is excluded. Raw data and model binaries stay outside Git.
 
@@ -104,7 +104,7 @@ uv run --frozen --no-editable python -m scripts.predict_bundle \
 
 Use a fresh data directory for each new round; existing snapshots stay pinned. Inference verifies model, source, dependency and live-file hashes and preserves every ticker/date key.
 
-Bundles require the recorded source and dependencies. The first study is preserved by the `v0.6.0-reference` tag; use that environment for its bundle. The current source produces new bundles.
+Bundles require the recorded source and dependencies. The first study is preserved by `v0.6.0-reference`, and the full-feature follow-up by `v0.6.1-research`; use the matching tagged environment for each dated bundle. The current source produces new bundles.
 
 The export writes dated ticker/date predictions and an integrity manifest. It does not upload, stake or trade. A historical snapshot is not a current-round submission. Check current Numerai requirements before independently arranging deployment. Pickled models are local trusted artifacts; do not load checkpoints from untrusted sources.
 
