@@ -40,22 +40,35 @@ def gaussianize(arr):
 
 
 def per_era_metrics(preds, targets, eras):
-    """Compute per-era Spearman correlations and derived metrics."""
+    """Spearman diagnostics, not official Numerai CORR or a returns Sharpe."""
+    preds, targets, eras = np.asarray(preds), np.asarray(targets), np.asarray(eras)
+    if not (len(preds) == len(targets) == len(eras)):
+        raise ValueError("predictions, targets and eras must have matching lengths")
+    if not np.isfinite(preds).all() or not np.isfinite(targets).all():
+        raise ValueError("metrics require finite predictions and targets")
     era_corrs = []
     for era in sorted(set(eras)):
         mask = eras == era
         if mask.sum() < 50:
             continue
+        if np.ptp(preds[mask]) == 0 or np.ptp(targets[mask]) == 0:
+            continue
         c, _ = spearmanr(preds[mask], targets[mask])
-        if not np.isnan(c):
+        if np.isfinite(c):
             era_corrs.append(c)
-    era_corrs = np.array(era_corrs)
+    if not era_corrs:
+        raise ValueError("no eligible eras: need at least 50 rows and nonconstant values per era")
+    era_corrs = np.asarray(era_corrs)
+    if len(era_corrs) < 2 or era_corrs.std() <= 1e-12:
+        raise ValueError("per-era mean/std is undefined without varying correlations across at least two eras")
+    cumulative = np.r_[0, np.cumsum(era_corrs)]
     return {
-        "mean_corr": era_corrs.mean(),
-        "std_corr": era_corrs.std(),
-        "sharpe": era_corrs.mean() / (era_corrs.std() + 1e-8),
-        "consistency": (era_corrs > 0).mean(),
-        "max_dd": np.min(np.cumsum(era_corrs - era_corrs.mean())),
+        "mean_corr": float(era_corrs.mean()),
+        "std_corr": float(era_corrs.std()),
+        "sharpe": float(era_corrs.mean() / (era_corrs.std() + 1e-8)),
+        "consistency": float((era_corrs > 0).mean()),
+        # Drawdown of cumulative correlations, not monetary P&L.
+        "max_dd": float(np.min(cumulative - np.maximum.accumulate(cumulative))),
         "n_eras": len(era_corrs),
     }
 
@@ -65,37 +78,37 @@ def per_era_metrics(preds, targets, eras):
 # ═══════════════════════════════════════════════════════════════════
 
 
-def download_data():
-    """Download v5.2 datasets including benchmark models."""
-    import numerapi
-
-    napi = numerapi.NumerAPI()
+def download_data(*, training=False, evaluation=False, live=False):
+    """Fetch only requested files, rejecting unavailable versions before download."""
     config.DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-    files = {
-        "train": f"{config.DATA_VERSION}/train.parquet",
-        "validation": f"{config.DATA_VERSION}/validation.parquet",
-        "live": f"{config.DATA_VERSION}/live.parquet",
-        "features": f"{config.DATA_VERSION}/features.json",
-        "train_bench": f"{config.DATA_VERSION}/train_benchmark_models.parquet",
-        "val_bench": f"{config.DATA_VERSION}/validation_benchmark_models.parquet",
-        "live_bench": f"{config.DATA_VERSION}/live_benchmark_models.parquet",
-    }
-
-    for name, remote_path in files.items():
-        local_path = config.DATA_DIR / Path(remote_path).name
-        if not local_path.exists():
-            log(f"Downloading {remote_path}...", 1)
-            napi.download_dataset(remote_path, str(local_path))
-        else:
-            # Re-download live data if stale (>18h old)
-            if "live" in name:
-                age_h = (time.time() - local_path.stat().st_mtime) / 3600
-                if age_h > 18:
-                    log(f"Re-downloading stale {name} ({age_h:.0f}h old)...", 1)
-                    napi.download_dataset(remote_path, str(local_path))
-                    continue
-            log(f"Already have {name}", 1)
+    names = {"features.json"}
+    if training:
+        names.update({"train.parquet", "train_benchmark_models.parquet"})
+    if training or evaluation:
+        names.update({"validation.parquet", "validation_benchmark_models.parquet"})
+    if live:
+        names.update({"live.parquet", "live_benchmark_models.parquet"})
+    pending = []
+    for name in sorted(names):
+        local = config.DATA_DIR / name
+        stale = name.startswith("live") and local.exists() and (time.time() - local.stat().st_mtime) > 18 * 3600
+        if not local.exists() or stale:
+            pending.append((f"{config.DATA_VERSION}/{name}", local))
+    if not pending:
+        log("Using cached compatible data files.", 1)
+        return
+    import numerapi
+    napi = numerapi.NumerAPI()
+    available = set(napi.list_datasets())
+    missing = [remote for remote, _ in pending if remote not in available]
+    if missing:
+        raise RuntimeError(
+            "Configured dataset files are unavailable: " + ", ".join(missing) +
+            ". This pipeline targets v5.2; use compatible cached files or complete the v6 migration described in README."
+        )
+    for remote, local in pending:
+        log(f"Downloading {remote}...", 1)
+        napi.download_dataset(remote, str(local))
 
 
 def load_features():
@@ -129,7 +142,7 @@ def load_data(features, split="train"):
     if bench_path.exists():
         bench = pd.read_parquet(bench_path)
         bench_cols = [c for c in bench.columns if c != "era"]
-        df = df.join(bench[bench_cols], how="inner")
+        df = df.join(bench[bench_cols], how="inner", validate="one_to_one")
         log(f"  + {len(bench_cols)} benchmark columns → {df.shape[1]} total", 1)
     else:
         bench_cols = []
@@ -503,19 +516,34 @@ def predict_all_components(models_dict, data_df, features, bench_cols, all_featu
     return predictions
 
 
-def weighted_rank_ensemble(predictions, weights):
-    """
-    Rank-normalize each component, compute weighted average, then gaussianize.
+def rank_within_eras(values, eras=None):
+    """Normalize cross-sections without using rows from other eras."""
+    values = np.asarray(values, dtype=float)
+    if values.ndim != 1 or not len(values) or not np.isfinite(values).all():
+        raise ValueError("predictions must be a nonempty finite one-dimensional array")
+    if eras is None:
+        return rankdata(values) / (len(values) + 1)
+    eras = np.asarray(eras)
+    if len(eras) != len(values):
+        raise ValueError("era labels must match prediction length")
+    ranked = np.empty(len(values))
+    for era in np.unique(eras):
+        mask = eras == era
+        ranked[mask] = rankdata(values[mask]) / (mask.sum() + 1)
+    return ranked
 
-    This ensures each component contributes on the same scale regardless
-    of raw prediction magnitude.
-    """
-    n = len(next(iter(predictions.values())))
-    ensemble = np.zeros(n)
+
+def weighted_rank_ensemble(predictions, weights, eras=None):
+    """Rank/blend within each era; a live single-era call can omit labels."""
+    if not weights or any(not np.isfinite(w) or w < 0 for w in weights.values()) or sum(weights.values()) <= 0:
+        raise ValueError("ensemble weights must be finite, nonnegative and have positive total")
+    n = len(predictions[next(iter(weights))])
+    blend = np.zeros(n)
     for name, weight in weights.items():
-        ranked = rankdata(predictions[name]) / (n + 1)  # Avoid exact 0 and 1
-        ensemble += weight * ranked
-    return gaussianize(ensemble)
+        if len(predictions[name]) != n:
+            raise ValueError("component predictions must have matching lengths")
+        blend += weight * rank_within_eras(predictions[name], eras)
+    return norm.ppf(rank_within_eras(blend, eras))
 
 
 def calibrate_weights(predictions, targets, eras, base_weights):
@@ -534,7 +562,7 @@ def calibrate_weights(predictions, targets, eras, base_weights):
     # Rank-normalize all components
     ranked_preds = {}
     for name, preds in predictions.items():
-        ranked_preds[name] = rankdata(preds) / (n + 1)
+        ranked_preds[name] = rank_within_eras(preds, eras)
 
     # Grid search: test base weights and variants with each component boosted
     best_sharpe = -999
@@ -623,25 +651,32 @@ def evaluate_pipeline(predictions, val, features, bench_cols, all_feature_cols, 
     if not eval_mask.any():
         raise ValueError("no reserved evaluation rows available")
 
-    # Raw ensemble
-    ensemble = weighted_rank_ensemble(predictions, weights)
-    raw_metrics = per_era_metrics(ensemble[eval_mask], targets[eval_mask], eras[eval_mask])
-    log(f"RAW: corr={raw_metrics['mean_corr']:.5f}, sharpe={raw_metrics['sharpe']:.3f}, "
-        f"consistency={raw_metrics['consistency']:.1%}", 2)
+    # Subset before any transform; each transform is then local to its era.
+    selected = val.iloc[eval_mask]
+    selected_eras = eras[eval_mask]
+    selected_targets = targets[eval_mask]
+    ensemble = weighted_rank_ensemble(
+        {name: np.asarray(values)[eval_mask] for name, values in predictions.items()},
+        weights, selected_eras,
+    )
+    raw_metrics = per_era_metrics(ensemble, selected_targets, selected_eras)
+    log(f"RAW Spearman proxy: corr={raw_metrics['mean_corr']:.5f}, "
+        f"mean/std={raw_metrics['sharpe']:.3f}, consistency={raw_metrics['consistency']:.1%}", 2)
+    if config.BENCHMARK_PRIMARY in selected:
+        baseline = per_era_metrics(selected[config.BENCHMARK_PRIMARY].values, selected_targets, selected_eras)
+        log(f"BENCHMARK Spearman proxy: corr={baseline['mean_corr']:.5f}, mean/std={baseline['sharpe']:.3f}", 2)
 
-    # Neutralized variants
-    features_df = val[features]
-    bench_df = val[bench_cols]
     for prop in [0.25, 0.5, 0.75, 1.0]:
-        neut_preds = two_stage_neutralize(
-            ensemble[eval_mask],
-            features_df.iloc[eval_mask],
-            bench_df.iloc[eval_mask],
-            prop, 0.3,
-        )
-        neut_metrics = per_era_metrics(neut_preds, targets[eval_mask], eras[eval_mask])
-        log(f"NEUT(p={prop:.2f}): corr={neut_metrics['mean_corr']:.5f}, "
-            f"sharpe={neut_metrics['sharpe']:.3f}", 2)
+        neut_preds = np.empty(len(ensemble))
+        for era in np.unique(selected_eras):
+            mask = selected_eras == era
+            neut_preds[mask] = two_stage_neutralize(
+                ensemble[mask], selected[features].iloc[mask],
+                selected[bench_cols].iloc[mask], prop, 0.3,
+            )
+        metrics = per_era_metrics(neut_preds, selected_targets, selected_eras)
+        log(f"NEUT(p={prop:.2f}) Spearman proxy: corr={metrics['mean_corr']:.5f}, "
+            f"mean/std={metrics['sharpe']:.3f}", 2)
 
     return raw_metrics
 
@@ -721,7 +756,7 @@ def main():
 
     # ── Data ────────────────────────────────────────────────────────
     log("\n[1/8] Downloading data...")
-    download_data()
+    download_data(training=args.train, evaluation=args.evaluate, live=args.submit)
 
     log("\n[2/8] Loading features...")
     features = load_features()

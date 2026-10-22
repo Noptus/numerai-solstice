@@ -2,7 +2,7 @@
 
 [![Research checks](https://github.com/Noptus/numerai-solstice/actions/workflows/tests.yml/badge.svg)](https://github.com/Noptus/numerai-solstice/actions/workflows/tests.yml)
 
-**AI-assisted research implementation.** Offline tests verify the era partitioner; model training and live performance have not been validated by this cleanup.
+**AI-assisted research implementation.** Offline tests cover era isolation, cross-sectional transforms and training orchestration; model training and live performance have not been validated by this cleanup.
 
 **Compatibility checked October 22, 2026:** this code targets v5.2. Numerai retired public v5.0-v5.3 training/validation downloads on October 16. Training requires previously cached compatible data. A v6 migration needs explicit column, target, feature and benchmark changes plus retraining; changing the version string is insufficient. See [Numerai data documentation](https://docs.numer.ai/numerai-tournament/data).
 
@@ -37,9 +37,10 @@ No data downloads or ML framework install are needed for these checks:
 python -m pip install -r requirements-checks.txt
 python -m unittest discover -s tests -v
 python -m py_compile solstice.py config.py validation.py
+python solstice.py --help
 ```
 
-The tests verify chronological order, disjoint roles, embargo gaps and failure on insufficient history. A synthetic orchestration test runs the real training control flow with mocked models and checks that early stopping, weight calibration and evaluation receive different era labels; another rejects legacy checkpoints. They do not certify the entire model pipeline or establish profitable performance.
+The tests verify chronological order, disjoint roles, embargo gaps and failure on insufficient history. Cross-sectional ranks and neutralization are computed within each era; metrics reject nonfinite inputs and empty/constant evaluation groups and undefined mean/std ratios. A synthetic orchestration test runs the real training control flow with mocked models and checks that early stopping, weight calibration and evaluation receive different era labels; another rejects legacy checkpoints. They do not certify the entire model pipeline or establish profitable performance.
 
 ## Local setup with cached v5.2 data
 
@@ -53,7 +54,7 @@ cp .env.example .env
 python solstice.py --help
 ```
 
-The legacy training CLI attempts to download missing v5.2 files and can fail because those public downloads were retired. Use the offline checks above for a clean-clone review. Full training also requires substantial memory and time. No training or submission was run during the cleanup.
+The CLI checks the available dataset catalog before downloading missing files. Unavailable v5.2 files produce an explicit compatibility error before any partial download. Each command requests only the files it needs. Use the offline checks above for a clean-clone review. Full training also requires substantial memory and time. No training or submission was run during the cleanup.
 
 ```bash
 # Train without submitting predictions
@@ -74,6 +75,8 @@ python solstice.py --submit
 The training path now separates validation eras into early stopping, a four-era gap, 95 calibration eras, a second four-era gap, and the final 95 evaluation eras. The transformer sees only the early-stopping partition; ensemble weights use only calibration eras. Partition labels, data version and target are saved with the checkpoint. Evaluation rejects legacy checkpoints without a split.
 
 Four eras are a configurable gap for the v5 20-day experiment, not a universal leakage guarantee. Check actual era spacing and overlapping labels before extending it. Existing historical validation data was already used by earlier versions: a new split cannot make it untouched again. New claims require a frozen protocol and genuinely unseen future data. The reported neutralization variants are exploratory diagnostics; selecting one after viewing evaluation metrics consumes that evaluation set.
+The displayed correlation is a **Spearman proxy**, not official Numerai CORR or MMC. The `sharpe` field is the mean/std ratio of per-era correlations, not an annualized returns Sharpe. `max_dd` measures drawdown in cumulative correlations, not monetary P&L. Benchmark comparisons use the same proxy.
+
 For a reproducible result, record the source commit, data version, exact era splits, configuration, model hashes, per-era metrics and dated live round history. Compare against a simple baseline and include uncertainty and costs. The README deliberately does not quote a rank or hardware-performance estimate without a matching artifact.
 
 No scheduled training or submission is enabled merely by cloning this repository. No paid compute is required by these documentation changes.
